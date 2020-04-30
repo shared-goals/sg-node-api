@@ -82,9 +82,7 @@ function Goal (data) {
      * @returns {*}
      */
     self.findAll = async(ctx, user_id) => {
-        user_id = (user_id && user_id.id) || user_id
-            || (ctx && ctx.session && typeof ctx.session !== 'undefined' && ctx.session.user && ctx.session.user.get('id'))
-            || (ctx && ctx.session && typeof ctx.session !== 'undefined' && ctx.session.user && ctx.session.user.get('id'))
+        user_id = (user_id && user_id.id) || user_id || ctx.session.user.get('id')
         return await req.make(ctx, '/users/' + user_id + '/goals', {
             method: 'GET'
         }).then(async(response) => {
