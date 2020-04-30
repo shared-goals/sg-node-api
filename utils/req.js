@@ -10,6 +10,35 @@ const request = require('request-promise')
  */
 const API_URL = process.env.SG_API || null
 
+/**
+ * Bearer-токен для авторизации запросов
+ * @type {string|null}
+ */
+let SESSION_TOKEN = null
+
+/**
+ * Объект юзера сессии
+ * @type {{}|null}
+ */
+let SESSION_USER = null
+
+/**
+ * Установить токен авторизации
+ */
+const setSessionToken = (token) => {
+    SESSION_TOKEN = token
+}
+
+module.exports.setSessionToken = setSessionToken;
+
+/**
+ * Установить токен авторизации
+ */
+const setSessionUser = (user) => {
+    SESSION_USER = user
+}
+
+module.exports.setSessionUser = setSessionUser;
 
 /**
  * Вспомогательная функция для использования внешних и внутренних API
@@ -25,20 +54,20 @@ const make = async (ctx, url, args = {}) => {
         return null
     }
     return new Promise((resolve, reject) => {
-        let user = null
+        let user = SESSION_USER
         
         // Если определен контекст приложения - ищем там данные пользователя
         if (ctx && typeof ctx !== 'undefined') {
-            const stateField = args.state_field || 'state'
+            const sessionField = args.session_field || 'session'
             
             // Ищем данные пользователя в поле состояния, определяемом default- или указанной переменной
-            if (ctx[stateField] && ctx[stateField].user) {
-                user = ctx[stateField].user
+            if (ctx[sessionField] && ctx[sessionField].user) {
+                user = ctx[sessionField].user
             }
         }
         
         // Определяем авторизационный токен из объекта пользователя
-        const token = user && (user.token || user.get('token')) || null
+        const token = SESSION_TOKEN || (user && (user.token || user.get('token')))
         
         // Если url не начинается со слэша - добавляем
         if (!url.match(/^\//)) {
@@ -66,6 +95,7 @@ const make = async (ctx, url, args = {}) => {
                 try {
                     responseJSON = JSON.parse(body)
                 } catch (err) {
+                    console.error('body: ', body)
                     console.error(ctx, err)
                 }
                 if (responseJSON !== null) {

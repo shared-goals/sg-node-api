@@ -82,7 +82,9 @@ function Goal (data) {
      * @returns {*}
      */
     self.findAll = async(ctx, user_id) => {
-        user_id = (user_id.id || user_id || ctx.state.user.get('id'))
+        user_id = (user_id && user_id.id) || user_id
+            || (ctx && ctx.session && typeof ctx.session !== 'undefined' && ctx.session.user && ctx.session.user.get('id'))
+            || (ctx && ctx.session && typeof ctx.session !== 'undefined' && ctx.session.user && ctx.session.user.get('id'))
         return await req.make(ctx, '/users/' + user_id + '/goals', {
             method: 'GET'
         }).then(async(response) => {
@@ -157,7 +159,7 @@ function Goal (data) {
                 createdAt_human: moment(self.get('createdAt')),
                 updatedAt_human: moment(self.get('updatedAt')),
                 deadlineAt_human: self.get('deadlineAt') ? moment(self.get('deadlineAt')) : null,
-                contract: await (new Contract()).findByGoalAndOwner(ctx, self.get('id'), (user || ctx.state.user).get('id')),
+                contract: await (new Contract()).findByGoalAndOwner(ctx, self.get('id'), (user || ctx.session.user).get('id')),
                 contracts: await (new Contract()).findByGoal(ctx, self.get('id'))
             })
         } else {
@@ -174,7 +176,7 @@ function Goal (data) {
     self.findByOwnerAndCode = async(ctx, data) => {
         let goals = []
         const owner = await (new User().findByEmail(ctx,
-            (data.owner === 'me' ? ctx.state.user.get('email').replace(/@.+/, '') : data.owner) + '@t.me'))
+            (data.owner === 'me' ? ctx.session.user.get('email').replace(/@.+/, '') : data.owner) + '@t.me'))
 
         if (owner !== null) {
             goals = await self.findAll(ctx, owner.get('id'))

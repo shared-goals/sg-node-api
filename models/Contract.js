@@ -123,7 +123,7 @@ function Contract (data) {
      */
     self.findByUser = async(ctx, user_id) => {
         // Отправляем запрос на получение информации о контрактах пользователя
-        return await req.make(ctx, '/users/' + (user_id || ctx.state.user.get('id')) + '/contracts', {
+        return await req.make(ctx, '/users/' + (user_id || ctx.session.user.get('id')) + '/contracts', {
             method: 'GET'
         }).then( (response) => {
             // конвертируем записи в объекты

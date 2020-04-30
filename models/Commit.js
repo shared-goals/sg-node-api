@@ -203,7 +203,7 @@ function Commit (data) {
      */
     self.save = async(ctx) => {
         // Определяем данные для вставки или апдейта
-        self.set({owner: { id: ctx.state.user.get('id')}})
+        self.set({owner: { id: ctx.session.user.get('id')}})
 
         // Фиксируем текущую дату срабатывания в контракте и вычисляем следующую дату по контракту, сэйвим в контракт
         // const contract = self.get('contract')
