@@ -106,7 +106,7 @@ function Contract (data) {
      */
     self.findById = async(ctx, id) => {
         // Отправляем запрос на получение информаии о цели
-        await req.make(ctx, 'contracts/' + id, {
+        await req.make(ctx, '/contracts/' + id, {
             method: 'GET',
             
         }).then( (response) => {
@@ -123,7 +123,7 @@ function Contract (data) {
      */
     self.findByUser = async(ctx, user_id) => {
         // Отправляем запрос на получение информации о контрактах пользователя
-        return await req.make(ctx, 'users/' + (user_id || ctx.state.user.get('id')) + '/contracts', {
+        return await req.make(ctx, '/users/' + (user_id || ctx.state.user.get('id')) + '/contracts', {
             method: 'GET'
         }).then( (response) => {
             // конвертируем записи в объекты
@@ -138,7 +138,7 @@ function Contract (data) {
      */
     self.findByGoal = async(ctx, id) => {
         // Отправляем запрос на получение информаии о цели
-        return req.make(ctx, 'goals/' + id + '/contracts', {
+        return req.make(ctx, '/goals/' + id + '/contracts', {
             method: 'GET',
         }).then( (response) => {
             return response.map((contract) => (new Contract()).set(contract))
@@ -153,7 +153,7 @@ function Contract (data) {
      */
     self.findByGoalAndOwner = async(ctx, goal, owner) => {
         // Отправляем запрос на получение информаии о цели
-        return await req.make(ctx, 'contracts/' + goal + '/' + owner, {
+        return await req.make(ctx, '/contracts/' + goal + '/' + owner, {
             method: 'GET',
         }).then( (response) => {
             if (!response.error) {
@@ -186,7 +186,7 @@ function Contract (data) {
         // Если был определен айдишник - это апдейт
         if (self.get('id') !== null && typeof self.get('id') !== 'undefined') {
             // Отправляем запрос на получение информаии о цели
-            await req.make(ctx, 'contracts/' + self.get('id'), Object.assign({}, self.get(), {
+            await req.make(ctx, '/contracts/' + self.get('id'), Object.assign({}, self.get(), {
                 method: 'PUT',
             }))
             .then( (response) => {
@@ -194,7 +194,7 @@ function Contract (data) {
             })
         // Если не был определен айдишник - это вставка
         } else {
-            await req.make(ctx, 'contracts', Object.assign({}, self.get(), {
+            await req.make(ctx, '/contracts', Object.assign({}, self.get(), {
                 method: 'POST',
             }))
             .then( (response) => {

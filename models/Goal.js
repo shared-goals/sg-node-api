@@ -83,7 +83,7 @@ function Goal (data) {
      */
     self.findAll = async(ctx, user_id) => {
         user_id = (user_id.id || user_id || ctx.state.user.get('id'))
-        return await req.make(ctx, 'users/' + user_id + '/goals', {
+        return await req.make(ctx, '/users/' + user_id + '/goals', {
             method: 'GET'
         }).then(async(response) => {
             let goals = [], goal
@@ -144,7 +144,7 @@ function Goal (data) {
      */
     self.findById = async (ctx, id, user) => {
         // Отправляем запрос на получение информаии о цели
-        const ret = await req.make(ctx, 'goals/' + id, {
+        const ret = await req.make(ctx, '/goals/' + id, {
             method: 'GET'
         }).then( (response) => {
             return self.set(response)
@@ -217,7 +217,7 @@ function Goal (data) {
         // Если был определен айдишник - это апдейт
         if (self.get('id') !== null && typeof self.get('id') !== 'undefined') {
             // Отправляем запрос на получение информаии о цели
-            await req.make(ctx, 'goals/' + self.get('id'), Object.assign({}, self.get(), {
+            await req.make(ctx, '/goals/' + self.get('id'), Object.assign({}, self.get(), {
                 method: 'PUT',
             }))
             .then( (response) => {
@@ -225,7 +225,7 @@ function Goal (data) {
             })
         // Если не был определен айдишник - это вставка
         } else {
-            await req.make(ctx, 'goals', Object.assign({}, self.get(), {
+            await req.make(ctx, '/goals', Object.assign({}, self.get(), {
                 method: 'POST',
             }))
             .then( (response) => {

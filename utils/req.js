@@ -5,14 +5,25 @@ require('dotenv').config()
 const request = require('request-promise')
 
 /**
+ * URL для внешнего API
+ * @type {*|string}
+ */
+const API_URL = process.env.SG_API || null
+
+
+/**
  * Вспомогательная функция для использования внешних и внутренних API
  *
  * @param ctx - Контекст приложения
  * @param url - Вызываемый URL
  * @param args - Аргументы вызова
- * @returns {Promise} - Promise-объект запроса
+ * @returns {Promise|null} - Promise-объект запроса
  */
-async function make(ctx, url, args = {}) {
+const make = async (ctx, url, args = {}) => {
+    if (API_URL === null) {
+        console.error('🚫  SharedGoals API URL is not defined. Set SG_API env-variable to fix this.')
+        return null
+    }
     return new Promise((resolve, reject) => {
         let user = null
         
@@ -28,6 +39,11 @@ async function make(ctx, url, args = {}) {
         
         // Определяем авторизационный токен из объекта пользователя
         const token = user && (user.token || user.get('token')) || null
+        
+        // Если url не начинается со слэша - добавляем
+        if (!url.match(/^\//)) {
+            url = '/' + url
+        }
 
         // Формируем опции запроса
         let opt = {
@@ -37,8 +53,9 @@ async function make(ctx, url, args = {}) {
             url: `${process.env.SG_API}${url}`,
             form: args
         }
-        
-        if (process.env.log === true) {
+
+        // Логируем параметры запросы
+        if (process.env.LOG === 'on') {
             console.log(url + ' ' + JSON.stringify(opt))
         }
 
@@ -65,4 +82,4 @@ async function make(ctx, url, args = {}) {
     })
 }
 
-module.exports = make;
+module.exports.make = make;

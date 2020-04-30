@@ -42,7 +42,7 @@ function User (data) {
     
     self.findAll = async(ctx) => {
         // Отправляем запрос на получение информаии о пользователях
-        return await req.make(ctx, 'users', {
+        return await req.make(ctx, '/users', {
             method: 'GET'
         }).then(async(response) => {
             let users = []
@@ -54,7 +54,6 @@ function User (data) {
                     users.push((new User()).set(response[i]))
                 }
             }
-            console.log(users)
             return users
         })
     }
@@ -64,9 +63,9 @@ function User (data) {
         let url
         if (id === parseInt(id, 10)) {
             if (id) {
-                url = 'users/' + id
+                url = '/users/' + id
             } else {
-                url = 'users/email/' + id + '@t.me'
+                url = '/users/email/' + id + '@t.me'
             }
             await req.make(ctx, url, {
                 method: 'GET'
@@ -80,7 +79,7 @@ function User (data) {
     
     self.findByEmail = async(ctx, email) => {
         // Отправляем запрос на получение информаии о пользователе
-        const ret = await req.make(ctx, 'users/email/' + encodeURIComponent(email), {
+        const ret = await req.make(ctx, '/users/email/' + encodeURIComponent(email), {
             method: 'GET'
         }).then( (response) => {
             self.set(response)

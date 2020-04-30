@@ -104,7 +104,7 @@ function Commit (data) {
      */
     self.findByUser = async(ctx, user_id) => {
         // Отправляем запрос на получение информации о контрактах пользователя
-        return await req.make(ctx, 'users/' + user_id + '/commits', {
+        return await req.make(ctx, '/users/' + user_id + '/commits', {
             method: 'GET'
         }).then( (response) => {
             let commits = response.map((commit) => (new Commit()).set(commit))
@@ -120,7 +120,7 @@ function Commit (data) {
      */
     self.findById = async(ctx, id) => {
         // Отправляем запрос на получение информаии о цели
-        await req.make(ctx, 'commits/' + id, {
+        await req.make(ctx, '/commits/' + id, {
             method: 'GET',
             
         }).then( (response) => {
@@ -137,7 +137,7 @@ function Commit (data) {
      */
     self.findByGoal = async(ctx, id) => {
         // Отправляем запрос на получение информаии о цели
-        return req.make(ctx, 'goals/' + id + '/commits', {
+        return req.make(ctx, '/goals/' + id + '/commits', {
             method: 'GET',
             
         }).then( (response) => {
@@ -215,7 +215,7 @@ function Commit (data) {
         // Если был определен айдишник - это апдейт
         if (self.get('id') !== null && typeof self.get('id') !== 'undefined') {
             // Отправляем запрос на получение информаии о цели
-            await req.make(ctx, 'commits/' + self.get('id'), Object.assign({}, data, {
+            await req.make(ctx, '/commits/' + self.get('id'), Object.assign({}, data, {
                 method: 'PUT',
             }))
             .then( (response) => {
@@ -223,7 +223,7 @@ function Commit (data) {
             })
         // Если не был определен айдишник - это вставка
         } else {
-            await req.make(ctx, 'commits', Object.assign({}, data, {
+            await req.make(ctx, '/commits', Object.assign({}, data, {
                 method: 'POST',
             }))
             .then( (response) => {
