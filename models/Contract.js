@@ -181,7 +181,7 @@ function Contract (data) {
     self.save = async(ctx) => {
         // Определяем данные для вставки или апдейта
         const data = self.get()
-        data.owner = { id: ctx.session.SGUser.get('id')}
+        data.owner = { id: ctx.session.user.get('id')}
         
         // Если был определен айдишник - это апдейт
         if (self.get('id') !== null && typeof self.get('id') !== 'undefined') {

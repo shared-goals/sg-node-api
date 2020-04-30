@@ -126,7 +126,7 @@ function Goal (data) {
             // Если query начинается с решетки - пробуем найти строку в поле кода цели
             if (query.match(new RegExp('^(me|@me|my)?\\s*' + ownerAndCodeDivider + '.+'))) {
                 return await self.findByOwnerAndCode(ctx, {
-                    owner: ctx.session.SGUser.get('email').replace(/@.+/, ''),
+                    owner: ctx.session.user.get('email').replace(/@.+/, ''),
                     code: query.replace(new RegExp('^.*' + ownerAndCodeDivider), '')
                 })
             }
@@ -214,7 +214,7 @@ function Goal (data) {
     self.save = async(ctx) => {
         // Определяем данные для вставки или апдейта
         const data = self.get()
-        data.owner = { id: ctx.session.SGUser.get('id')}
+        data.owner = { id: ctx.session.user.get('id')}
 
         // Если был определен айдишник - это апдейт
         if (self.get('id') !== null && typeof self.get('id') !== 'undefined') {
