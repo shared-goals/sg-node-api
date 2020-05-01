@@ -58,6 +58,14 @@ function User (data) {
         })
     }
     
+    self.checkAuth = async(ctx, token) => {
+        // Отправляем запрос на получение информации о токене
+        return await req.make(ctx, '/check', {
+            token: token,
+            method: 'POST'
+        }).then(response => response).catch(reason => reason)
+    }
+    
     self.findById = async(ctx, id) => {
         // Отправляем запрос на получение информаии о пользователе
         let url
