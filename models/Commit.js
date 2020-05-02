@@ -11,6 +11,10 @@ function Commit (data) {
     let self = this
     data = data || {}
     
+    /**
+     * Атрибуты модели
+     * @type {{owner: null, contract: null, duration: number, whats_next: null, whats_done: null, createdAt: null, updatedAt: null}}
+     */
     self.attributes = {
         owner: null,
         contract: null,
@@ -35,10 +39,12 @@ function Commit (data) {
      */
     self.dur_re = /^\s*((?<hours>\d+)\s*(h|hr)\s*)?((?<minutes>\d+)\s*(m|min))?\s*$/
     
+
     /**
+     * Задает значения одному или нескольким указанным полям
      *
-     * @param data
-     * @returns {Commit}
+     * @param data - Объект ключей и их значений
+     * @returns {Goal}
      */
     self.set = (data) => {
         self.attributes = Object.assign({}, self.attributes, data)
@@ -46,8 +52,9 @@ function Commit (data) {
     }
     
     /**
+     * Возвращает значение одного указанного поля в заданном виде или объект из значений по массиву указанных ключей
      *
-     * @param keys
+     * @param keys - Строка ключа или массив ключей
      * @returns {*}
      */
     self.get = (keys) => {
@@ -60,6 +67,7 @@ function Commit (data) {
     }
     
     /**
+     * Сериализует экземпляр класса в JSON-объект
      *
      * @returns {string}
      */
@@ -68,6 +76,7 @@ function Commit (data) {
     }
     
     /**
+     * Возвращает сериализованный объект, с учетом под-объектов
      *
      * @returns {string}
      */
@@ -94,63 +103,80 @@ function Commit (data) {
      */
     self.formatDuration = () => {
         const duration = self.get('duration')
-        return duration ? (duration >= 60 ? Math.floor(duration / 60) + 'h' + (duration % 60 !== 0 ? ' ' + (duration % 60) + 'min' : '') : duration + 'min') : ''
+        return duration ? (duration >= 60
+            ? Math.floor(duration / 60) + 'h' + (duration % 60 !== 0 ? ' ' + (duration % 60) + 'min' : '')
+            : duration + 'min') : ''
     }
     
     /**
+     * Возвращает текущие коммиты заданного пользователя
      *
-     * @param ctx
-     * @param user_id
+     * @param ctx - Контекст приложения
+     * @param user_id - Идентификатор пользователя
+     * @returns {Promise.<TResult|null>}
      */
     self.findByUser = async(ctx, user_id) => {
-        // Отправляем запрос на получение информации о контрактах пользователя
-        return await req.make(ctx, '/users/' + user_id + '/commits', {
+        const ret = await req.make(ctx, '/users/' + user_id + '/commits', {
             method: 'GET'
-        }).then( (response) => {
+        }).then( response => {
             let commits = response.map((commit) => (new Commit()).set(commit))
             commits = self.sortBy(commits, 'createdAt', false)
             return self.formatFields(commits)
+        }).catch( reason => {
+            console.error(reason)
+            return false
         })
+    
+        return ret || null
     }
     
     /**
+     * Возвращает объект коммита по его идентификатору
      *
-     * @param ctx
-     * @param id
+     * @param ctx - Контекст приложения
+     * @param id - Идентификатор коммита
+     * @returns {Promise.<*>}
      */
     self.findById = async(ctx, id) => {
-        // Отправляем запрос на получение информаии о цели
-        await req.make(ctx, '/commits/' + id, {
-            method: 'GET',
-            
-        }).then( (response) => {
+        const ret = await req.make(ctx, '/commits/' + id, {
+            method: 'GET'
+        }).then( response => {
             self.set(response)
+            return true
+        }).catch( reason => {
+            console.error(reason)
+            return false
         })
-        
-        return self
+    
+        return ret ? self : null
     }
     
     /**
+     * Возвращает массив коммитов заданной цели
      *
-     * @param ctx
-     * @param id
+     * @param ctx - Контекст приложения
+     * @param id - Идентификатор заданной цели
+     * @returns {Promise.<TResult|null>}
      */
     self.findByGoal = async(ctx, id) => {
-        // Отправляем запрос на получение информаии о цели
-        return req.make(ctx, '/goals/' + id + '/commits', {
+        const ret = await req.make(ctx, '/goals/' + id + '/commits', {
             method: 'GET',
-            
-        }).then( (response) => {
+        }).then( response => {
             let commits = response.map((commit) => (new Commit()).set(commit))
             commits = self.sortBy(commits, 'createdAt', false)
             return self.formatFields(commits)
+        }).catch( reason => {
+            console.error(reason)
+            return false
         })
+    
+        return ret || null
     }
     
     /**
-     * Форматирует поля коммитов
+     * Форматирует поля массива коммитов
      *
-     * @param commits
+     * @param commits - Массив коммитов
      * @returns {any[] | Array}
      */
     self.formatFields = (commits) => {
@@ -164,33 +190,32 @@ function Commit (data) {
     }
     
     /**
-     * Форматирует поля коммитов
+     * Сортирует массив коммитов
      *
-     * @param commits
-     * @param key
-     * @param asc : true|false
-     * @returns {any[] | Array}
+     * @param commits - Массив коммитов
+     * @param key - Ключ сортировки, по умолчанию createdAt
+     * @param asc - Направление сортировки : true (по возрастанию) или false (по убыванию)
+     * @returns {Array.<T>}
      */
     self.sortBy = (commits, key, asc) => {
         return (commits || []).sort((a, b) => {
-            const dateA = a.get(key || 'createdAt');
-            const dateB = b.get(key || 'createdAt');
+            const dateA = a.get(key || 'createdAt')
+            const dateB = b.get(key || 'createdAt')
         
-            let comparison = 0;
+            let comparison = 0
             if (dateA > dateB) {
-                comparison = asc ? 1 : -1;
+                comparison = asc ? 1 : -1
             } else if (dateA < dateB) {
-                comparison = asc ? -1 : 1;
+                comparison = asc ? -1 : 1
             }
-            return comparison;
+            return comparison
         })
     }
     
     /**
-     *
-     * @param ctx
+     * Обновляет флаг полноты записи / готовности к ее записи в БД
      */
-    self.updateReadyState = (ctx) => {
+    self.updateReadyState = () => {
         self.set({
             ready: self.get('duration') && self.get('duration') !== 0 && self.get('duration') !== ''
                 && self.get('whats_done') !== ''
@@ -198,8 +223,10 @@ function Commit (data) {
     }
     
     /**
-     * Сохранение объекта в БД. Апдейт существующей записи или вставка новой
-     * @param ctx
+     * Сохраняет объект в БД. Апдейтит существующую запись или вставляет новую в зависимости от поля self.id
+     *
+     * @param ctx - Контекст приложения
+     * @returns {Promise.<Goal>}
      */
     self.save = async(ctx) => {
         // Определяем данные для вставки или апдейта
@@ -212,22 +239,25 @@ function Commit (data) {
         const data = self.plain()
         data.contract = { id: data.contract.id }
         
-        // Если был определен айдишник - это апдейт
         if (self.get('id') !== null && typeof self.get('id') !== 'undefined') {
-            // Отправляем запрос на получение информаии о цели
+            // Если был определен айдишник - это апдейт, используем метод PUT
             await req.make(ctx, '/commits/' + self.get('id'), Object.assign({}, data, {
                 method: 'PUT',
-            }))
-            .then( (response) => {
+            })).then( response => {
                 self.set(response)
+            }).catch( reason => {
+                console.error(reason)
+                return false
             })
-        // Если не был определен айдишник - это вставка
         } else {
+            // Если не был определен айдишник - это вставка, используем метод POST
             await req.make(ctx, '/commits', Object.assign({}, data, {
                 method: 'POST',
-            }))
-            .then( (response) => {
+            })).then( response => {
                 self.set(response)
+            }).catch( reason => {
+                console.error(reason)
+                return false
             })
         }
         

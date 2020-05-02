@@ -10,6 +10,10 @@ function User (data) {
     let self = this
     data = data || {}
     
+    /**
+     * Атрибуты модели
+     * @type {{id: null, createdAt: null, updatedAt: null, language: string, username: string, email: string, password: string, name: string, telegram_id: null}}
+     */
     self.attributes = {
         id: null,
         createdAt: null,
@@ -22,11 +26,23 @@ function User (data) {
         telegram_id: null
     }
     
+    /**
+     * Задает значения одному или нескольким указанным полям
+     *
+     * @param data - Объект ключей и их значений
+     * @returns {Goal}
+     */
     self.set = (data) => {
         self.attributes = Object.assign({}, self.attributes, data)
         return self
     }
     
+    /**
+     * Возвращает значение одного указанного поля в заданном виде или объект из значений по массиву указанных ключей
+     *
+     * @param keys - Строка ключа или массив ключей
+     * @returns {*}
+     */
     self.get = (keys) => {
         return keys && typeof keys !== 'undefined'
             ? (typeof keys === 'string'
@@ -36,15 +52,44 @@ function User (data) {
             : self.attributes
     }
     
+    /**
+     * Сериализует экземпляр класса в JSON-объект
+     *
+     * @returns {string}
+     */
     self.toJSON = () => {
         return JSON.stringify(self.attributes)
     }
     
+    /**
+     * Прповеряет заданный токен на валидность и актуальность
+     *
+     * @param ctx - Контекст приложения
+     * @param token - Токен для проверки
+     * @returns {Promise.<TResult>}
+     */
+    self.checkAuth = async(ctx, token) => {
+        // Отправляем запрос на получение информации о токене
+        return await req.make(ctx, '/check', {
+            token: token,
+            method: 'POST'
+        }).then(response => response)
+        .catch(reason => {
+            console.error(reason)
+            return null
+        })
+    }
+    
+    /**
+     * Возвращает массив всех пользователей
+     *
+     * @param ctx - Контекст приложения
+     * @returns {Promise.<TResult>}
+     */
     self.findAll = async(ctx) => {
-        // Отправляем запрос на получение информаии о пользователях
         return await req.make(ctx, '/users', {
             method: 'GET'
-        }).then(async(response) => {
+        }).then( async (response) => {
             let users = []
             if (!response || response.length === 0) {
                 console.error(ctx, 'Нет пользователей')
@@ -55,50 +100,55 @@ function User (data) {
                 }
             }
             return users
+        }).catch( reason => {
+            console.error(reason)
+            return null
         })
     }
     
-    self.checkAuth = async(ctx, token) => {
-        // Отправляем запрос на получение информации о токене
-        return await req.make(ctx, '/check', {
-            token: token,
-            method: 'POST'
-        }).then(response => response).catch(reason => reason)
-    }
-    
+    /**
+     * Возвращает объект пользователя по идентификатору
+     *
+     * @param ctx - Контекст приложения
+     * @param id - Идентификатор пользователя
+     * @returns {Promise.<User>}
+     */
     self.findById = async(ctx, id) => {
-        // Отправляем запрос на получение информаии о пользователе
-        let url
-        if (id === parseInt(id, 10)) {
-            if (id) {
-                url = '/users/' + id
-            } else {
-                url = '/users/email/' + id + '@t.me'
-            }
-            await req.make(ctx, url, {
-                method: 'GET'
-            }).then( (response) => {
-                self.set(response)
-            })
-        }
-        
-        return self
-    }
-    
-    self.findByEmail = async(ctx, email) => {
-        // Отправляем запрос на получение информаии о пользователе
-        const ret = await req.make(ctx, '/users/email/' + encodeURIComponent(email), {
+        const ret = await req.make(ctx, '/users/' + id, {
             method: 'GET'
-        }).then( (response) => {
+        }).then( response => {
             self.set(response)
             return true
-        }).catch( () => {
+        }).catch( reason => {
+            console.error(reason)
+            return false
+        })
+    
+        return ret ? self : null
+    }
+    
+    /**
+     * Возвращает объект пользователя по идентификатору
+     *
+     * @param ctx - Контекст приложения
+     * @param email - Email пользователя
+     * @returns {Promise.<User>}
+     */
+    self.findByEmail = async(ctx, email) => {
+        const ret = await req.make(ctx, '/users/email/' + encodeURIComponent(email), {
+            method: 'GET'
+        }).then( response => {
+            self.set(response)
+            return true
+        }).catch( reason => {
+            console.error(reason)
             return false
         })
         
         return ret ? self : null
     }
     
+    // Устанавливаем переданные в конструктор опции
     self.set(data)
     
     return self

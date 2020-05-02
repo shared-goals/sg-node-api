@@ -22,8 +22,11 @@ let SESSION_TOKEN = null
  */
 let SESSION_USER = null
 
+
 /**
- * Установить токен авторизации
+ * Устанавливает токен авторизации
+ *
+ * @param token - Токен
  */
 const setSessionToken = (token) => {
     SESSION_TOKEN = token
@@ -32,7 +35,9 @@ const setSessionToken = (token) => {
 module.exports.setSessionToken = setSessionToken;
 
 /**
- * Установить токен авторизации
+ * Устанавливает объект пользователя
+ *
+ * @param user - Объект пользователя
  */
 const setSessionUser = (user) => {
     SESSION_USER = user

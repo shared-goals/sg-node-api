@@ -19,7 +19,10 @@ function Goal (data) {
      */
     const ownerAndCodeDivider = '/'
     
-    //
+    /**
+     * Атрибуты модели
+     * @type {{owner: null, code: string, title: string, description: string, contract: Contract, archived: null, completed: null, createdAt: null, updatedAt: null}}
+     */
     self.attributes = {
         owner: null,
         code: '',
@@ -70,20 +73,25 @@ function Goal (data) {
             : `/viewgoal ${self.get('id').substr(0, process.env.GOAL_HASH_LENGTH)}`)
     }
     
+    /**
+     * Сериализует экземпляр класса в JSON-объект
+     *
+     * @returns {string}
+     */
     self.toJSON = () => {
         return JSON.stringify(self.attributes)
     }
     
     /**
-     * Возвращает объект всех целей выбранного или текущего пользователя
+     * Возвращает массив всех целей выбранного или текущего пользователя
      *
      * @param ctx - Контекст приложения
-     * @param user_id
-     * @returns {*}
+     * @param user_id - Идентификатор пользователя
+     * @returns {Promise.<*>}
      */
     self.findAll = async(ctx, user_id) => {
         user_id = (user_id && user_id.id) || user_id || ctx.session.user.get('id')
-        return await req.make(ctx, '/users/' + user_id + '/goals', {
+        const ret = await req.make(ctx, '/users/' + user_id + '/goals', {
             method: 'GET'
         }).then(async(response) => {
             let goals = [], goal
@@ -104,14 +112,20 @@ function Goal (data) {
                 }
             }
             return goals
+        }).catch( reason => {
+            console.error(reason)
+            return false
         })
+        
+        return ret ? self : null
     }
     
     /**
      * Возвращает объект цели по ее идентификатору / пользователю и коду
      *
      * @param ctx - Контекст приложения
-     * @param id
+     * @param query - Запрос цели, содержащий пользователя и код
+     * @returns {Promise.<*>}
      */
     self.find = async(ctx, query) => {
         const re = new RegExp('^(?<owner>[^' + ownerAndCodeDivider + '\\s]+)' + ownerAndCodeDivider + '(?<code>.+)$')
@@ -139,16 +153,17 @@ function Goal (data) {
      * Возвращает объект цели по ее идентификатору
      *
      * @param ctx - Контекст приложения
-     * @param id
-     * @param user
+     * @param id - Идентификатор цели
+     * @param user - Объект пользователя для определения поля текущего или указанного пользователя
+     * @returns {Promise.<*>}
      */
     self.findById = async (ctx, id, user) => {
-        // Отправляем запрос на получение информаии о цели
         const ret = await req.make(ctx, '/goals/' + id, {
             method: 'GET'
-        }).then( (response) => {
-            return self.set(response)
-        }).catch((reason) => {
+        }).then( response => {
+            self.set(response)
+            return true
+        }).catch( reason => {
             console.error(reason)
             return false
         })
@@ -170,6 +185,7 @@ function Goal (data) {
      *
      * @param ctx - Контекст приложения
      * @param data - Данные для выбора цели: {[owner: <int>, ]code: <string>}
+     * @returns {Promise.<*>}
      */
     self.findByOwnerAndCode = async(ctx, data) => {
         let goals = []
@@ -182,8 +198,7 @@ function Goal (data) {
                 return goal.get('code') === data.code
             })
         } else {
-            console.error(ctx, 'Ошибка. Пользователь ' + data.owner + ' не найден')
-            ctx.reply('Ошибка. Пользователь ' + data.owner + ' не найден')
+            console.error('Ошибка. Пользователь ' + data.owner + ' не найден')
         }
 
         if (goals && goals.length === 1) {
@@ -205,37 +220,42 @@ function Goal (data) {
     }
     
     /**
-     * Сохранение объекта в БД. Апдейт существующей записи или вставка новой
+     * Сохраняет объект в БД. Апдейтит существующую запись или вставляет новую в зависимости от поля self.id
      *
      * @param ctx - Контекст приложения
+     * @returns {Promise.<Goal>}
      */
     self.save = async(ctx) => {
         // Определяем данные для вставки или апдейта
         const data = self.get()
         data.owner = { id: ctx.session.user.get('id')}
 
-        // Если был определен айдишник - это апдейт
         if (self.get('id') !== null && typeof self.get('id') !== 'undefined') {
-            // Отправляем запрос на получение информаии о цели
+            // Если был определен айдишник - это апдейт, используем метод PUT
             await req.make(ctx, '/goals/' + self.get('id'), Object.assign({}, self.get(), {
                 method: 'PUT',
-            }))
-            .then( (response) => {
+            })).then( response => {
                 self.set(response)
+            }).catch( reason => {
+                console.error(reason)
+                return false
             })
-        // Если не был определен айдишник - это вставка
         } else {
+            // Если не был определен айдишник - это вставка, используем метод POST
             await req.make(ctx, '/goals', Object.assign({}, self.get(), {
                 method: 'POST',
-            }))
-            .then( (response) => {
+            })).then( response => {
                 self.set(response)
+            }).catch( reason => {
+                console.error(reason)
+                return false
             })
         }
         
         return self
     }
     
+    // Устанавливаем переданные в конструктор опции
     self.set(data)
     
     return self

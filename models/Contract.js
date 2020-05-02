@@ -10,6 +10,10 @@ function Contract (data) {
     let self = this
     data = data || {}
     
+    /**
+     * Атрибуты модели
+     * @type {{owner: null, goal: null, duration: number, occupation: null, week_days: Array, month_days: Array, next_run: null, last_run: null, createdAt: null, updatedAt: null, ready: boolean}}
+     */
     self.attributes = {
         owner: null,
         goal: null,
@@ -25,9 +29,10 @@ function Contract (data) {
     }
     
     /**
+     * Задает значения одному или нескольким указанным полям
      *
-     * @param data
-     * @returns {Contract}
+     * @param data - Объект ключей и их значений
+     * @returns {Goal}
      */
     self.set = (data) => {
         self.attributes = Object.assign({}, self.attributes, data)
@@ -35,8 +40,9 @@ function Contract (data) {
     }
     
     /**
+     * Возвращает значение одного указанного поля в заданном виде или объект из значений по массиву указанных ключей
      *
-     * @param keys
+     * @param keys - Строка ключа или массив ключей
      * @returns {*}
      */
     self.get = (keys) => {
@@ -61,7 +67,6 @@ function Contract (data) {
      * @return {{}}
      */
     self.validateFormat = async(ctx, txt) => {
-        // Отправляем запрос на валидацию строки контракта
         return await req.make(ctx, 'contracts/validate/' + encodeURIComponent(txt), {
             method: 'GET',
         }).then( (response) => response.data)
@@ -92,6 +97,7 @@ function Contract (data) {
     }
     
     /**
+     * Сериализует экземпляр класса в JSON-объект
      *
      * @returns {string}
      */
@@ -100,105 +106,128 @@ function Contract (data) {
     }
     
     /**
+     * Возвращает объект контракта по его идентификатору
      *
-     * @param ctx
-     * @param id
+     * @param ctx - Контекст приложения
+     * @param id - Идентификатор контракта
+     * @returns {Promise.<*>}
      */
     self.findById = async(ctx, id) => {
-        // Отправляем запрос на получение информаии о цели
-        await req.make(ctx, '/contracts/' + id, {
+        const ret = await req.make(ctx, '/contracts/' + id, {
             method: 'GET',
-            
-        }).then( (response) => {
+        }).then( response => {
             self.set(response)
+            return true
+        }).catch( reason => {
+            console.error(reason)
+            return false
         })
-        
-        return self
+    
+        return ret ? self : null
     }
     
     /**
+     * Возвращает массив контрактов указанного или текущего пользователя
      *
-     * @param ctx
-     * @param user_id
+     * @param ctx - Контекст приложения
+     * @param user_id - ID указанного пользователя
+     * @returns {Promise.<TResult|null>}
      */
-    self.findByUser = async(ctx, user_id) => {
-        // Отправляем запрос на получение информации о контрактах пользователя
-        return await req.make(ctx, '/users/' + (user_id || ctx.session.user.get('id')) + '/contracts', {
+    self.findByUser = async (ctx, user_id) => {
+        const ret = await req.make(ctx, '/users/' + (user_id || ctx.session.user.get('id')) + '/contracts', {
             method: 'GET'
-        }).then( (response) => {
-            // конвертируем записи в объекты
+        }).then( response => {
             return response.map((contract) => (new Contract()).set(contract))
+        }).catch( reason => {
+            console.error(reason)
+            return false
         })
+    
+        return ret || null
     }
     
     /**
+     * Возвращает массив контрактов заданной цели
      *
-     * @param ctx
-     * @param id
+     * @param ctx - Контекст приложения
+     * @param id - Идентификатор заданной цели
+     * @returns {Promise.<TResult|null>}
      */
-    self.findByGoal = async(ctx, id) => {
-        // Отправляем запрос на получение информаии о цели
-        return req.make(ctx, '/goals/' + id + '/contracts', {
+    self.findByGoal = async (ctx, id) => {
+        const ret = await req.make(ctx, '/goals/' + id + '/contracts', {
             method: 'GET',
-        }).then( (response) => {
+        }).then( response => {
             return response.map((contract) => (new Contract()).set(contract))
+        }).catch( reason => {
+            console.error(reason)
+            return false
         })
+    
+        return ret || null
     }
     
     /**
+     * Возвращает контракт заданного пользователя к заданной цели
      *
-     * @param ctx
-     * @param goal
-     * @param owner
+     * @param ctx - Контекст приложения
+     * @param goal - Идентификатор заданной цели
+     * @param owner - Идентификатор заданного пользователя
+     * @returns {Promise.<TResult>}
      */
     self.findByGoalAndOwner = async(ctx, goal, owner) => {
-        // Отправляем запрос на получение информаии о цели
         return await req.make(ctx, '/contracts/' + goal + '/' + owner, {
             method: 'GET',
-        }).then( (response) => {
+        }).then( response => {
             if (!response.error) {
                 return self.set(response)
             } else {
                 return null
             }
-        }).catch( (reason) => {
-            return null
+        }).catch( reason => {
+            console.error(reason)
+            return false
         })
     }
     
     /**
+     * Обновляет флаг полноты записи / готовности к ее записи в БД
      *
-     * @param ctx
+     * @param ctx - Контекст приложения
      */
     self.updateReadyState = async(ctx) => {
         self.set({ready: (await self.validateFormat(ctx, self.get('occupation'))) !== null})
     }
     
     /**
-     * Сохранение объекта в БД. Апдейт существующей записи или вставка новой
-     * @param ctx
+     * Сохраняет объект в БД. Апдейтит существующую запись или вставляет новую в зависимости от поля self.id
+     *
+     * @param ctx - Контекст приложения
+     * @returns {Promise.<Goal>}
      */
     self.save = async(ctx) => {
         // Определяем данные для вставки или апдейта
         const data = self.get()
         data.owner = { id: ctx.session.user.get('id')}
         
-        // Если был определен айдишник - это апдейт
         if (self.get('id') !== null && typeof self.get('id') !== 'undefined') {
-            // Отправляем запрос на получение информаии о цели
+            // Если был определен айдишник - это апдейт, используем метод PUT
             await req.make(ctx, '/contracts/' + self.get('id'), Object.assign({}, self.get(), {
                 method: 'PUT',
-            }))
-            .then( (response) => {
+            })).then( response => {
                 self.set(response)
+            }).catch( reason => {
+                console.error(reason)
+                return false
             })
-        // Если не был определен айдишник - это вставка
         } else {
+            // Если не был определен айдишник - это вставка, используем метод POST
             await req.make(ctx, '/contracts', Object.assign({}, self.get(), {
                 method: 'POST',
-            }))
-            .then( (response) => {
+            })).then( response => {
                 self.set(response)
+            }).catch( reason => {
+                console.error(reason)
+                return false
             })
         }
         
