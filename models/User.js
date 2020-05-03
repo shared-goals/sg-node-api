@@ -148,6 +148,29 @@ function User (data) {
         return ret ? self : null
     }
     
+    /**
+     * Регистрирует пользователя по переданным данным
+     *
+     * @param ctx - Контекст приложения
+     * @returns {Promise.<*>}
+     */
+    self.register = async(ctx) => {
+        return await req.make(ctx, '/register/', Object.assign({
+            provider: 'local'
+        }, self.get(), {
+            method: 'POST'
+        })).then( response => {
+            if (response.success === true) {
+                return self.set(response)
+            } else {
+                return response
+            }
+        }).catch( reason => {
+            console.error(reason)
+            return reason
+        })
+    }
+    
     // Устанавливаем переданные в конструктор опции
     self.set(data)
     
