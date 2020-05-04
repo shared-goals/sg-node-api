@@ -76,7 +76,31 @@ function User (data) {
         }).then(response => response)
         .catch(reason => {
             console.error(reason)
-            return null
+            return reason
+        })
+    }
+    
+    /**
+     * Добавляет провайдер авторизации в запись пользователя
+     *
+     * @param ctx - Контекст приложения
+     * @param token - Токен для проверки
+     * @returns {Promise.<TResult>}
+     */
+    self.addUserProvider = async(ctx, data) => {
+        // Отправляем запрос на получение информации о токене
+        if (data.id) {
+            data.id = parseInt(data.id, 10)
+        }
+        self.get('auth').push(data)
+        return await req.make(ctx, '/users/' + self.get('id'), {
+            method: 'PUT',
+            auth: self.get('auth')
+        })
+        .then(response => response)
+        .catch(reason => {
+            console.error(reason)
+            return reason
         })
     }
     
