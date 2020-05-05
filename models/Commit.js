@@ -26,14 +26,14 @@ function Commit (data) {
     }
     
     /**
-     * Регулярка разбора короткой команды: /commit [<owner>/]<code> <duration> "<whats_done>"[ "<whats_next>"]
+     * Регулярка разбора короткой команды: /commit [<owner>/]<key> <duration> "<whats_done>"[ "<whats_next>"]
      * Пример: /commit ewgeniyk/sg 1h 20min "Some fixes" "Finish /commit"
      * @type {RegExp}
      */
-    self.re = /((?<owner>[^/\s]+)\/)?(?<code>[^\s]+)\s+((?<hours>\d+)\s*(h|hr)\s+)?((?<minutes>\d+)\s*(m|min)\s+)?("(?<whats_done>[^"]+)")\s*("(?<whats_next>[^"]+)")?$/
+    self.re = /((?<owner>[^/\s]+)\/)?(?<key>[^\s]+)\s+((?<hours>\d+)\s*(h|hr)\s+)?((?<minutes>\d+)\s*(m|min)\s+)?("(?<whats_done>[^"]+)")\s*("(?<whats_next>[^"]+)")?$/
     
     /**
-     * Регулярка разбора короткой команды: /commit [<owner>/]<code> <duration> "<whats_done>"[ "<whats_next>"]
+     * Регулярка разбора короткой команды: /commit [<owner>/]<key> <duration> "<whats_done>"[ "<whats_next>"]
      * Пример: /commit ewgeniyk/sg 1h 20min "Some fixes" "Finish /commit"
      * @type {RegExp}
      */

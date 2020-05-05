@@ -17,15 +17,15 @@ function Goal (data) {
      * Разделитель значений пользователя и кода в формате указания цели: ex.: "userName/goalName"
      * @type {string}
      */
-    const ownerAndCodeDivider = '/'
+    const ownerAndKeyDivider = '/'
     
     /**
      * Атрибуты модели
-     * @type {{owner: null, code: string, title: string, description: string, contract: Contract, archived: null, completed: null, createdAt: null, updatedAt: null}}
+     * @type {{owner: null, key: string, title: string, description: string, contract: Contract, archived: null, completed: null, createdAt: null, updatedAt: null}}
      */
     self.attributes = {
         owner: null,
-        code: '',
+        key: '',
         title: '',
         description: '',
         contract: new Contract(),
@@ -67,9 +67,9 @@ function Goal (data) {
      * @returns {string}
      */
     self.getTGLink = () => {
-        return (self.get('code') && self.get('code')!==''
+        return (self.get('key') && self.get('key')!==''
             ? `/viewgoal ` + self.get('owner').email.replace(/@.+/, '')
-                + `${ownerAndCodeDivider}${self.get('code')}`
+                + `${ownerAndKeyDivider}${self.get('key')}`
             : `/viewgoal ${self.get('id').substr(0, process.env.GOAL_HASH_LENGTH)}`)
     }
     
@@ -128,18 +128,18 @@ function Goal (data) {
      * @returns {Promise.<*>}
      */
     self.find = async(ctx, query) => {
-        const re = new RegExp('^(?<owner>[^' + ownerAndCodeDivider + '\\s]+)' + ownerAndCodeDivider + '(?<code>.+)$')
+        const re = new RegExp('^(?<owner>[^' + ownerAndKeyDivider + '\\s]+)' + ownerAndKeyDivider + '(?<key>.+)$')
         const sub_matches = query.match(re)
 
         // Если запрос в виде <строка>/<строка> - считаем что это пользователь и код
         if (sub_matches && sub_matches.groups) {
-            return await self.findByOwnerAndCode(ctx, sub_matches.groups)
+            return await self.findByOwnerAndKey(ctx, sub_matches.groups)
         } else {
             // Если query начинается с решетки - пробуем найти строку в поле кода цели
-            if (query.match(new RegExp('^(me|@me|my)?\\s*' + ownerAndCodeDivider + '.+'))) {
-                return await self.findByOwnerAndCode(ctx, {
+            if (query.match(new RegExp('^(me|@me|my)?\\s*' + ownerAndKeyDivider + '.+'))) {
+                return await self.findByOwnerAndKey(ctx, {
                     owner: ctx.session.user.get('email').replace(/@.+/, ''),
-                    code: query.replace(new RegExp('^.*' + ownerAndCodeDivider), '')
+                    key: query.replace(new RegExp('^.*' + ownerAndKeyDivider), '')
                 })
             }
             // Иначе если ровно GOAL_HASH_LENGTH символов - считаем что это часть ее _id
@@ -184,10 +184,10 @@ function Goal (data) {
      * Возвращает объект цели по ее пользователю и коду
      *
      * @param ctx - Контекст приложения
-     * @param data - Данные для выбора цели: {[owner: <int>, ]code: <string>}
+     * @param data - Данные для выбора цели: {[owner: <int>, ]key: <string>}
      * @returns {Promise.<*>}
      */
-    self.findByOwnerAndCode = async(ctx, data) => {
+    self.findByOwnerAndKey = async(ctx, data) => {
         let goals = []
         const owner = await (new User().findByEmail(ctx,
             (data.owner === 'me' ? ctx.session.user.get('email').replace(/@.+/, '') : data.owner) + '@t.me'))
@@ -195,7 +195,7 @@ function Goal (data) {
         if (owner !== null) {
             goals = await self.findAll(ctx, owner.get('id'))
             goals = (goals || []).filter((goal) => {
-                return goal.get('code') === data.code
+                return goal.get('key') === data.key
             })
         } else {
             console.error('Ошибка. Пользователь ' + data.owner + ' не найден')
