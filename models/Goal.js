@@ -117,7 +117,7 @@ function Goal (data) {
             return false
         })
         
-        return ret ? self : null
+        return ret || null
     }
     
     /**

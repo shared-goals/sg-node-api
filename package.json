@@ -1,6 +1,6 @@
 {
     "name": "sg-node-api",
-    "version": "1.1.11",
+    "version": "1.1.12",
     "description": "Shared Goals API implemented as Node.JS library. API for telegram bot, www-clients and other usages",
     "main": "index.js",
     "scripts": {
