@@ -27,6 +27,7 @@ function Goal (data) {
         owner: null,
         key: '',
         title: '',
+        deadline: null,
         description: '',
         contract: new Contract(),
         archived: null,
@@ -171,10 +172,16 @@ function Goal (data) {
             return self.set({
                 createdAt_human: moment(self.get('createdAt')),
                 updatedAt_human: moment(self.get('updatedAt')),
-                deadlineAt_human: self.get('deadlineAt') ? moment(self.get('deadlineAt')) : null,
                 contract: await (new Contract()).findByGoalAndOwner(ctx, self.get('id'), (user || ctx.session.user).get('id')),
                 contracts: await (new Contract()).findByGoal(ctx, self.get('id'))
             })
+            if (self.get('deadlineAt')) {
+                self.set({
+                    deadlineAt_human: moment(self.get('deadlineAt')),
+                    percent_completed: moment().diff(self.get('createdAt')) / moment(self.get('deadlineAt')).diff(self.get('createdAt')) * 100
+                })
+            }
+            return self
         } else {
             return null
         }
