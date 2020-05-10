@@ -68,7 +68,7 @@ function User (data) {
      * @param token - Токен для проверки
      * @returns {Promise.<TResult>}
      */
-    self.checkAuth = async(ctx, token) => {
+    self.checkAuth = async (ctx, token) => {
         // Отправляем запрос на получение информации о токене
         return await req.make(ctx, '/check', {
             token: token,
@@ -87,7 +87,7 @@ function User (data) {
      * @param token - Токен для проверки
      * @returns {Promise.<TResult>}
      */
-    self.addUserProvider = async(ctx, data) => {
+    self.addUserProvider = async (ctx, data) => {
         // Отправляем запрос на получение информации о токене
         if (data.id) {
             data.id = parseInt(data.id, 10)
@@ -110,7 +110,7 @@ function User (data) {
      * @param ctx - Контекст приложения
      * @returns {Promise.<TResult>}
      */
-    self.findAll = async(ctx) => {
+    self.findAll = async (ctx) => {
         return await req.make(ctx, '/users', {
             method: 'GET'
         }).then( async (response) => {
@@ -137,7 +137,7 @@ function User (data) {
      * @param id - Идентификатор пользователя
      * @returns {Promise.<User>}
      */
-    self.findById = async(ctx, id) => {
+    self.findById = async (ctx, id) => {
         const ret = await req.make(ctx, '/users/' + id, {
             method: 'GET'
         }).then( response => {
@@ -158,7 +158,7 @@ function User (data) {
      * @param email - Email пользователя
      * @returns {Promise.<User>}
      */
-    self.findByEmail = async(ctx, email) => {
+    self.findByEmail = async (ctx, email) => {
         const ret = await req.make(ctx, '/users/email/' + encodeURIComponent(email), {
             method: 'GET'
         }).then( response => {
@@ -178,7 +178,7 @@ function User (data) {
      * @param ctx - Контекст приложения
      * @returns {Promise.<*>}
      */
-    self.register = async(ctx) => {
+    self.register = async (ctx) => {
         return await req.make(ctx, '/register/', Object.assign({
             provider: 'local'
         }, self.get(), {
@@ -193,6 +193,31 @@ function User (data) {
             console.error(reason)
             return reason
         })
+    }
+    
+    /**
+     * Обновляет в сессии токен пользователя
+     *
+     * @param ctx - Контекст приложения
+     * @returns {Promise.<*>}
+     */
+    self.refreshToken = async (ctx) => {
+        const auth = await req.make(ctx, '/refresh_token/', {
+            method: 'POST'
+        })
+        .then( response => response)
+        .catch( response => {
+            console.error('Сессия не обновлена, ошибка: ', response.message)
+            return response
+        })
+        if (auth.token) {
+            console.log('Сессия обновлена, инфо:')
+            console.log(ctx.session.passport.user)
+            ctx.session.passport.user = ctx.session.user.set({token: auth.token}).get()
+            return { success: true }
+        } else {
+            return Object.assign({ success: false }, auth )
+        }
     }
     
     // Устанавливаем переданные в конструктор опции
