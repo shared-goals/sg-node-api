@@ -30,6 +30,7 @@ function Goal (data) {
         deadline: null,
         description: '',
         contract: new Contract(),
+        status: 'open',
         archived: null,
         completed: null,
         createdAt: null,

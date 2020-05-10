@@ -17,6 +17,7 @@ function Contract (data) {
     self.attributes = {
         owner: null,
         goal: null,
+        key: '',
         duration: 0,
         occupation: null,
         week_days: [],
