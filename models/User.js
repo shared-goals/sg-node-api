@@ -131,6 +131,37 @@ function User (data) {
     }
     
     /**
+     * Возвращает массив всех пользователей в соответствии с текстовым запросом
+     *
+     * @param ctx - Контекст приложения
+     * @param query - Текстовый запрос
+     * @param opts - Опции поиска
+     * @returns {Promise.<TResult>}
+     */
+    self.search = async (ctx, query, opts) => {
+        opts = opts || {}
+        return await req.make(ctx, '/users/search/' + query, {
+            method: 'GET'
+        }).then( async (response) => {
+            let users = []
+            if (!response || response.length === 0) {
+                console.error(ctx, 'Нет пользователей')
+                return null
+            } else {
+                for (let i = 0; i < response.length; i++) {
+                    if (opts.skip_my !== true || response[i].id !== ctx.session.user.get('id')) {
+                        users.push((new User()).set(response[i]))
+                    }
+                }
+            }
+            return users
+        }).catch( reason => {
+            console.error(reason)
+            return null
+        })
+    }
+    
+    /**
      * Возвращает объект пользователя по идентификатору
      *
      * @param ctx - Контекст приложения

@@ -157,9 +157,11 @@ function Goal (data) {
      * @param ctx - Контекст приложения
      * @param id - Идентификатор цели
      * @param user - Объект пользователя для определения поля текущего или указанного пользователя
+     * @param opts - Другие опции
      * @returns {Promise.<*>}
      */
-    self.findById = async (ctx, id, user) => {
+    self.findById = async (ctx, id, user, opts) => {
+        opts = opts || {}
         const ret = await req.make(ctx, '/goals/' + id, {
             method: 'GET'
         }).then( response => {
@@ -170,17 +172,19 @@ function Goal (data) {
             return false
         })
         if (ret !== false) {
-            return self.set({
-                createdAt_human: moment(self.get('createdAt')),
-                updatedAt_human: moment(self.get('updatedAt')),
-                contract: await (new Contract()).findByGoalAndOwner(ctx, self.get('id'), (user || ctx.session.user).get('id')),
-                contracts: await (new Contract()).findByGoal(ctx, self.get('id'))
-            })
-            if (self.get('deadlineAt')) {
+            if (opts.simple !== true) {
                 self.set({
-                    deadlineAt_human: moment(self.get('deadlineAt')),
-                    percent_completed: moment().diff(self.get('createdAt')) / moment(self.get('deadlineAt')).diff(self.get('createdAt')) * 100
+                    createdAt_human: moment(self.get('createdAt')),
+                    updatedAt_human: moment(self.get('updatedAt')),
+                    contract: await (new Contract()).findByGoalAndOwner(ctx, self.get('id'), (user || ctx.session.user).get('id')),
+                    contracts: await (new Contract()).findByGoal(ctx, self.get('id'))
                 })
+                if (self.get('deadlineAt')) {
+                    self.set({
+                        deadlineAt_human: moment(self.get('deadlineAt')),
+                        percent_completed: moment().diff(self.get('createdAt')) / moment(self.get('deadlineAt')).diff(self.get('createdAt')) * 100
+                    })
+                }
             }
             return self
         } else {
