@@ -22,6 +22,8 @@ function User (data) {
         username: '',
         email: '',
         password: '',
+        auth: {},
+        options: {},
         name: '',
         telegram_id: null
     }
@@ -46,8 +48,8 @@ function User (data) {
     self.get = (keys) => {
         return keys && typeof keys !== 'undefined'
             ? (typeof keys === 'string'
-                ? self.attributes[keys]
-                : keys.reduce((obj, key) => ({ ...obj, [key]: self.attributes[key] }), {})
+                    ? self.attributes[keys]
+                    : keys.reduce((obj, key) => ({ ...obj, [key]: self.attributes[key] }), {})
             )
             : self.attributes
     }
@@ -178,7 +180,7 @@ function User (data) {
             console.error(reason)
             return false
         })
-    
+        
         return ret ? self : null
     }
     
@@ -249,6 +251,28 @@ function User (data) {
         } else {
             return Object.assign({ success: false }, auth )
         }
+    }
+    
+    /**
+     * Сохраняет объект в БД, апдейтя существующую запись
+     *
+     * @param ctx - Контекст приложения
+     * @returns {Promise.<Goal>}
+     */
+    self.save = async(ctx) => {
+        // Определяем данные для апдейта
+        const data = self.get()
+        
+        await req.make(ctx, '/users/' + self.get('id'), Object.assign({}, self.get(), {
+            method: 'PUT',
+        })).then( response => {
+            self.set(response)
+        }).catch( reason => {
+            console.error(reason)
+            return false
+        })
+        
+        return self
     }
     
     // Устанавливаем переданные в конструктор опции
