@@ -1,5 +1,6 @@
 "use strict";
 
+const Base = require('./base')
 const req = require('../utils/req')
 
 /**
@@ -8,52 +9,52 @@ const req = require('../utils/req')
  */
 function Contract (data) {
     let self = this
+    
+    // Вызываем конструктор базовой модели
+    Base.call(this)
+
     data = data || {}
     
     /**
-     * Атрибуты модели
-     * @type {{owner: null, goal: null, duration: number, occupation: null, week_days: Array, month_days: Array, next_run: null, last_run: null, createdAt: null, updatedAt: null, ready: boolean}}
+     * Массив дней недели в полном написании латиницей
+     * @type {[string,string,string,string,string,string,string]}
      */
-    self.attributes = {
-        owner: null,
-        goal: null,
-        key: '',
-        duration: 0,
-        occupation: null,
-        week_days: [],
-        month_days: [],
-        next_run: null,
-        last_run: null,
-        createdAt: null,
-        updatedAt: null,
-        ready: false
-    }
+    const weekdays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
     
     /**
-     * Задает значения одному или нескольким указанным полям
-     *
-     * @param data - Объект ключей и их значений
-     * @returns {Goal}
+     * Массив дней недели латиницей, укороченный до трех символов
+     * @type {Array}
      */
-    self.set = (data) => {
-        self.attributes = Object.assign({}, self.attributes, data)
-        return self
-    }
+    const shortWeekdays = weekdays.map((item) => item.substr(0, 3))
     
     /**
-     * Возвращает значение одного указанного поля в заданном виде или объект из значений по массиву указанных ключей
-     *
-     * @param keys - Строка ключа или массив ключей
-     * @returns {*}
+     * Массив различных вариаций задания минут латиницей
+     * @type {Array}
      */
-    self.get = (keys) => {
-        return keys && typeof keys !== 'undefined'
-            ? (typeof keys === 'string'
-                ? self.attributes[keys]
-                : keys.reduce((obj, key) => ({ ...obj, [key]: self.attributes[key] }), {})
-            )
-            : self.attributes
-    }
+    const minsVariants = ('m|min|mins|minutes').split('|')
+    
+    /**
+     * Массив различных вариаций задания часов латиницей
+     * @type {Array}
+     */
+    const hoursVariants = ('h|hour|hours').split('|')
+    
+    /**
+     * Регулярка разбора формата задания параметров контракта: <duration_value><duration_measures> [every ]<repeats>
+     * Примеры: 2h every mon,tue
+     *          100m 5, 10, 15
+     *          3hour every 10
+     *          30min Monday, Tuesday, Saturday
+     * @type {RegExp}
+     */
+    self.re = new RegExp('^(?<duration_value>\\d+)\\s*(?<duration_measures>'
+        + minsVariants.join('|') + '|' + hoursVariants.join('|')
+        + ')\\s+(every\\s)?(?<repeats>('
+        + 'day|week|month'
+        + '|' + weekdays.join('|')
+        + '|' + shortWeekdays.join('|')
+        + '|\\d+|\\d+,\\d+|,|\\s){1,13})$', 'i')
+
     
     /**
      * Проверяет валидность введенной строки занятости:
@@ -67,10 +68,65 @@ function Contract (data) {
      * @param txt
      * @return {{}}
      */
-    self.validateFormat = async(ctx, txt) => {
-        return await req.make(ctx, 'contracts/validate/' + encodeURIComponent(txt), {
-            method: 'GET',
-        }).then( (response) => response.data)
+    self.validateFormat = (ctx, txt) => {
+        let ret
+        // ret = await req.make(ctx, 'contracts/validate/' + encodeURIComponent(txt), {
+        //     method: 'GET',
+        // }).then( (response) => response.data)
+
+        let data = self.re.exec(txt)
+        
+        if (data !== null) {
+            ret = self.parseText(data.hasOwnProperty('groups') ? data.groups : {
+                duration_value: data[1],
+                duration_measures: data[2],
+                repeats: data[4]
+            })
+        } else {
+            ret = null
+        }
+        return ret
+    }
+    
+    /**
+     * Парсит исходный формат занятости и возвращает форматированный для хранения в БД
+     *
+     * @param data введенный формат занятости. Пример: {duration_value: 20, duration_measures: 'min', repeats: 'mon,sat}
+     * @returns {{}}
+     */
+    self.parseText = (data) => {
+        let ret = {
+            duration: null,
+            week_days: [],
+            month_days: []
+        }
+        
+        if (minsVariants.indexOf(data.duration_measures) !== -1) {
+            ret.duration = data.duration_value
+        } else if (hoursVariants.indexOf(data.duration_measures) !== -1) {
+            ret.duration = data.duration_value * 60
+        }
+        
+        let days = data.repeats.replace(/\s/, '').replace(/[;|]/, ',').toLowerCase().split(',')
+        
+        days.forEach((day) => {
+            if (day === 'day') {
+                ret.week_days = shortWeekdays
+            } else if(day.match(/^\d+$/)) {
+                ret.month_days.push(parseInt(day, 10))
+            } else {
+                let idx = weekdays.indexOf(day) !== -1
+                    ? weekdays.indexOf(day)
+                    : (shortWeekdays.indexOf(day) !== -1
+                        ? shortWeekdays.indexOf(day)
+                        : null
+                    )
+                if (idx !== null) {
+                    ret.week_days.push(shortWeekdays[idx])
+                }
+            }
+        })
+        return ret
     }
     
     /**
@@ -95,36 +151,6 @@ function Contract (data) {
         return duration && (week_days || month_days) ?
             (self.formatDuration()
                 + ' every ' + (week_days.length > 0 ? (week_days.length === 7 ? 'day' : week_days.join(',')) : month_days.join(','))) : null
-    }
-    
-    /**
-     * Сериализует экземпляр класса в JSON-объект
-     *
-     * @returns {string}
-     */
-    self.toJSON = () => {
-        return JSON.stringify(self.attributes)
-    }
-    
-    /**
-     * Возвращает объект контракта по его идентификатору
-     *
-     * @param ctx - Контекст приложения
-     * @param id - Идентификатор контракта
-     * @returns {Promise.<*>}
-     */
-    self.findById = async(ctx, id) => {
-        const ret = await req.make(ctx, '/contracts/' + id, {
-            method: 'GET',
-        }).then( response => {
-            self.set(response)
-            return true
-        }).catch( reason => {
-            console.error(reason)
-            return false
-        })
-    
-        return ret ? self : null
     }
     
     /**
@@ -235,10 +261,29 @@ function Contract (data) {
         return self
     }
     
-    self.set(data)
+    // Устанавливаем атрибуты модели, встроенные и переданные
+    self.set(Object.assign({
+        apiPath: '/contracts',
+        owner: null,
+        goal: null,
+        key: '',
+        duration: 0,
+        occupation: null,
+        week_days: [],
+        month_days: [],
+        next_run: null,
+        last_run: null,
+        createdAt: null,
+        updatedAt: null,
+        ready: false
+    }, data))
     
     return self
 }
+
+// Наследуемся от базовой модели
+Contract.prototype = Object.create(Base.prototype)
+Contract.prototype.constructor = Base
 
 console.log('🔸️  Contract model initiated')
 

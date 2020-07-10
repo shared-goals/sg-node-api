@@ -1,7 +1,8 @@
 "use strict";
 
-const moment = require('moment')
+const Base = require('./base')
 const req = require('../utils/req')
+const moment = require('moment')
 
 /**
  * Класс коммита к контракту
@@ -9,21 +10,11 @@ const req = require('../utils/req')
  */
 function Commit (data) {
     let self = this
-    data = data || {}
     
-    /**
-     * Атрибуты модели
-     * @type {{owner: null, contract: null, duration: number, whats_next: null, whats_done: null, createdAt: null, updatedAt: null}}
-     */
-    self.attributes = {
-        owner: null,
-        contract: null,
-        duration: 0,
-        whats_next: null,
-        whats_done: null,
-        createdAt: null,
-        updatedAt: null
-    }
+    // Вызываем конструктор базовой модели
+    Base.call(this)
+
+    data = data || {}
     
     /**
      * Регулярка разбора короткой команды: /commit [<owner>/]<key> <duration> "<whats_done>"[ "<whats_next>"]
@@ -40,41 +31,6 @@ function Commit (data) {
     self.dur_re = /^\s*((?<hours>\d+)\s*(h|hr)\s*)?((?<minutes>\d+)\s*(m|min))?\s*$/
     
 
-    /**
-     * Задает значения одному или нескольким указанным полям
-     *
-     * @param data - Объект ключей и их значений
-     * @returns {Goal}
-     */
-    self.set = (data) => {
-        self.attributes = Object.assign({}, self.attributes, data)
-        return self
-    }
-    
-    /**
-     * Возвращает значение одного указанного поля в заданном виде или объект из значений по массиву указанных ключей
-     *
-     * @param keys - Строка ключа или массив ключей
-     * @returns {*}
-     */
-    self.get = (keys) => {
-        return keys && typeof keys !== 'undefined'
-            ? (typeof keys === 'string'
-                ? self.attributes[keys]
-                : keys.reduce((obj, key) => ({ ...obj, [key]: self.attributes[key] }), {})
-            )
-            : self.attributes
-    }
-    
-    /**
-     * Сериализует экземпляр класса в JSON-объект
-     *
-     * @returns {string}
-     */
-    self.toJSON = () => {
-        return JSON.stringify(self.attributes)
-    }
-    
     /**
      * Возвращает сериализованный объект, с учетом под-объектов
      *
@@ -131,27 +87,6 @@ function Commit (data) {
     }
     
     /**
-     * Возвращает объект коммита по его идентификатору
-     *
-     * @param ctx - Контекст приложения
-     * @param id - Идентификатор коммита
-     * @returns {Promise.<*>}
-     */
-    self.findById = async(ctx, id) => {
-        const ret = await req.make(ctx, '/commits/' + id, {
-            method: 'GET'
-        }).then( response => {
-            self.set(response)
-            return true
-        }).catch( reason => {
-            console.error(reason)
-            return false
-        })
-    
-        return ret ? self : null
-    }
-    
-    /**
      * Возвращает массив коммитов заданной цели
      *
      * @param ctx - Контекст приложения
@@ -186,29 +121,6 @@ function Commit (data) {
                 duration_human: commit.formatDuration('duration')
             })
             return commit
-        })
-    }
-    
-    /**
-     * Сортирует массив коммитов
-     *
-     * @param commits - Массив коммитов
-     * @param key - Ключ сортировки, по умолчанию createdAt
-     * @param asc - Направление сортировки : true (по возрастанию) или false (по убыванию)
-     * @returns {Array.<T>}
-     */
-    self.sortBy = (commits, key, asc) => {
-        return (commits || []).sort((a, b) => {
-            const dateA = a.get(key || 'createdAt')
-            const dateB = b.get(key || 'createdAt')
-        
-            let comparison = 0
-            if (dateA > dateB) {
-                comparison = asc ? 1 : -1
-            } else if (dateA < dateB) {
-                comparison = asc ? -1 : 1
-            }
-            return comparison
         })
     }
     
@@ -264,10 +176,24 @@ function Commit (data) {
         return self
     }
     
-    self.set(data)
+    // Устанавливаем атрибуты модели, встроенные и переданные
+    self.set(Object.assign({
+        apiPath: '/commits',
+        owner: null,
+        contract: null,
+        duration: 0,
+        whats_next: null,
+        whats_done: null,
+        createdAt: null,
+        updatedAt: null
+    }, data))
     
     return self
 }
+
+// Наследуемся от базовой модели
+Commit.prototype = Object.create(Base.prototype)
+Commit.prototype.constructor = Base
 
 console.log('🔸️  Commit model initiated')
 

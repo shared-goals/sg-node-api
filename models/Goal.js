@@ -1,7 +1,8 @@
 "use strict";
 
-const moment = require('moment')
+const Base = require('./base')
 const req = require('../utils/req')
+const moment = require('moment')
 const User = require('./User')
 const Contract = require('./Contract')
 
@@ -11,6 +12,10 @@ const Contract = require('./Contract')
  */
 function Goal (data) {
     let self = this
+    
+    // Вызываем конструктор базовой модели
+    Base.call(this)
+    
     data = data || {}
     
     /**
@@ -19,50 +24,7 @@ function Goal (data) {
      */
     const ownerAndKeyDivider = '/'
     
-    /**
-     * Атрибуты модели
-     * @type {{owner: null, key: string, title: string, description: string, contract: Contract, archived: null, completed: null, createdAt: null, updatedAt: null}}
-     */
-    self.attributes = {
-        owner: null,
-        key: '',
-        title: '',
-        deadline: null,
-        description: '',
-        contract: new Contract(),
-        status: 'open',
-        archived: null,
-        completed: null,
-        createdAt: null,
-        updatedAt: null
-    }
-    
-    /**
-     * Задает значения одному или нескольким указанным полям
-     *
-     * @param data - Объект ключей и их значений
-     * @returns {Goal}
-     */
-    self.set = (data) => {
-        self.attributes = Object.assign({}, self.attributes, data)
-        return self
-    }
-    
-    /**
-     * Возвращает значение одного указанного поля в заданном виде или объект из значений по массиву указанных ключей
-     *
-     * @param keys - Строка ключа или массив ключей
-     * @returns {*}
-     */
-    self.get = (keys) => {
-        return keys && typeof keys !== 'undefined'
-            ? (typeof keys === 'string'
-                ? self.attributes[keys]
-                : keys.reduce((obj, key) => ({ ...obj, [key]: self.attributes[key] }), {})
-            )
-            : self.attributes
-    }
-    
+
     /**
      * Возвращает Telegram-ссылку для вывода текущей цели
      *
@@ -73,15 +35,6 @@ function Goal (data) {
             ? `/viewgoal ` + self.get('owner').email.replace(/@.+/, '')
                 + `${ownerAndKeyDivider}${self.get('key')}`
             : `/viewgoal ${self.get('id').substr(0, process.env.GOAL_HASH_LENGTH)}`)
-    }
-    
-    /**
-     * Сериализует экземпляр класса в JSON-объект
-     *
-     * @returns {string}
-     */
-    self.toJSON = () => {
-        return JSON.stringify(self.attributes)
     }
     
     /**
@@ -267,11 +220,28 @@ function Goal (data) {
         return self
     }
     
-    // Устанавливаем переданные в конструктор опции
-    self.set(data)
+    // Устанавливаем атрибуты модели, встроенные и переданные
+    self.set(Object.assign({
+        apiPath: '/goals',
+        owner: null,
+        key: '',
+        title: '',
+        deadline: null,
+        description: '',
+        contract: new Contract(),
+        status: 'open',
+        archived: null,
+        completed: null,
+        createdAt: null,
+        updatedAt: null
+    }, data))
     
     return self
 }
+
+// Наследуемся от базовой модели
+Goal.prototype = Object.create(Base.prototype)
+Goal.prototype.constructor = Base
 
 console.log('🔸️  Goal model initiated')
 

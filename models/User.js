@@ -1,5 +1,6 @@
 "use strict";
 
+const Base = require('./base')
 const req = require('../utils/req')
 
 /**
@@ -8,61 +9,13 @@ const req = require('../utils/req')
  */
 function User (data) {
     let self = this
+    
+    // Вызываем конструктор базовой модели
+    Base.call(this)
+    
     data = data || {}
     
-    /**
-     * Атрибуты модели
-     * @type {{id: null, createdAt: null, updatedAt: null, language: string, username: string, email: string, password: string, name: string, telegram_id: null}}
-     */
-    self.attributes = {
-        id: null,
-        createdAt: null,
-        updatedAt: null,
-        language: 'ru',
-        username: '',
-        email: '',
-        password: '',
-        auth: {},
-        options: {},
-        name: '',
-        telegram_id: null
-    }
-    
-    /**
-     * Задает значения одному или нескольким указанным полям
-     *
-     * @param data - Объект ключей и их значений
-     * @returns {Goal}
-     */
-    self.set = (data) => {
-        self.attributes = Object.assign({}, self.attributes, data)
-        return self
-    }
-    
-    /**
-     * Возвращает значение одного указанного поля в заданном виде или объект из значений по массиву указанных ключей
-     *
-     * @param keys - Строка ключа или массив ключей
-     * @returns {*}
-     */
-    self.get = (keys) => {
-        return keys && typeof keys !== 'undefined'
-            ? (typeof keys === 'string'
-                    ? self.attributes[keys]
-                    : keys.reduce((obj, key) => ({ ...obj, [key]: self.attributes[key] }), {})
-            )
-            : self.attributes
-    }
-    
-    /**
-     * Сериализует экземпляр класса в JSON-объект
-     *
-     * @returns {string}
-     */
-    self.toJSON = () => {
-        return JSON.stringify(self.attributes)
-    }
-    
+
     /**
      * Прповеряет заданный токен на валидность и актуальность
      *
@@ -167,27 +120,6 @@ function User (data) {
      * Возвращает объект пользователя по идентификатору
      *
      * @param ctx - Контекст приложения
-     * @param id - Идентификатор пользователя
-     * @returns {Promise.<User>}
-     */
-    self.findById = async (ctx, id) => {
-        const ret = await req.make(ctx, '/users/' + id, {
-            method: 'GET'
-        }).then( response => {
-            self.set(response)
-            return true
-        }).catch( reason => {
-            console.error(reason)
-            return false
-        })
-        
-        return ret ? self : null
-    }
-    
-    /**
-     * Возвращает объект пользователя по идентификатору
-     *
-     * @param ctx - Контекст приложения
      * @param email - Email пользователя
      * @returns {Promise.<User>}
      */
@@ -275,11 +207,28 @@ function User (data) {
         return self
     }
     
-    // Устанавливаем переданные в конструктор опции
-    self.set(data)
+    // Устанавливаем атрибуты модели, встроенные и переданные
+    self.set(Object.assign({
+        apiPath: '/users',
+        id: null,
+        createdAt: null,
+        updatedAt: null,
+        language: 'ru',
+        username: '',
+        email: '',
+        password: '',
+        auth: {},
+        options: {},
+        name: '',
+        telegram_id: null
+    }, data))
     
     return self
 }
+
+// Наследуемся от базовой модели
+User.prototype = Object.create(Base.prototype)
+User.prototype.constructor = Base
 
 console.log('🔸️  User model initiated')
 
