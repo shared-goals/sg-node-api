@@ -39,7 +39,7 @@ function User (data) {
      * Добавляет провайдер авторизации в запись пользователя
      *
      * @param ctx - Контекст приложения
-     * @param token - Токен для проверки
+     * @param data - Данные авторизации
      * @returns {Promise.<TResult>}
      */
     self.addUserProvider = async (ctx, data) => {
@@ -48,7 +48,7 @@ function User (data) {
             data.id = parseInt(data.id, 10)
         }
         self.get('auth').push(data)
-        return await req.make(ctx, '/users/' + self.get('id'), {
+        const ret = await req.make(ctx, '/users/' + self.get('id'), {
             method: 'PUT',
             auth: self.get('auth')
         })
@@ -57,6 +57,8 @@ function User (data) {
             console.error(reason)
             return reason
         })
+        self.refresh()
+        return ret
     }
     
     /**
@@ -207,6 +209,15 @@ function User (data) {
         return self
     }
     
+    /**
+     * Обновляет объект юзера в сессии по данным из БД
+     *
+     * @returns {Promise.<*>}
+     */
+    self.refresh = async(ctx) => {
+        return self.findById(ctx, self.get('id'))
+    }
+
     // Устанавливаем атрибуты модели, встроенные и переданные
     self.set(Object.assign({
         apiPath: '/users',
