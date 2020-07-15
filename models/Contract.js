@@ -1,6 +1,6 @@
 "use strict";
 
-const Base = require('./base')
+const Base = require('./Base')
 const req = require('../utils/req')
 
 /**
