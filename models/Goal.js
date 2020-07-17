@@ -133,10 +133,17 @@ function Goal (data) {
                     contracts: await (new Contract()).findByGoal(ctx, self.get('id'))
                 })
                 if (self.get('deadlineAt')) {
+                    const progress = moment().startOf('day').diff(self.get('createdAt')) / moment(self.get('deadlineAt')).startOf('day').diff(self.get('createdAt')) * 100
                     self.set({
                         deadlineAt_human: moment(self.get('deadlineAt')),
-                        percent_completed: moment().diff(self.get('createdAt')) / moment(self.get('deadlineAt')).diff(self.get('createdAt')) * 100
+                        percent_completed: progress
                     })
+                    self.set({
+                        state: progress === 100 ? 'Done' : (progress < 100 ? 'Active' : 'Overdue')
+                    })
+                    if (progress > 100) {
+                        self.set({overdue_days: moment().startOf('day').from(self.get('deadlineAt'), true)})
+                    }
                 }
             }
             return self
