@@ -5,6 +5,7 @@ const req = require('../utils/req')
 const moment = require('moment')
 const User = require('./User')
 const Contract = require('./Contract')
+const errors = require('../errors')
 
 /**
  * Класс цели
@@ -44,35 +45,46 @@ function Goal (data) {
      * @param user_id - Идентификатор пользователя
      * @returns {Promise.<*>}
      */
-    self.findAll = async(ctx, user_id) => {
-        user_id = (user_id && user_id.id) || user_id || ctx.session.user.get('id')
-        const ret = await req.make(ctx, '/users/' + user_id + '/goals', {
-            method: 'GET'
-        }).then(async(response) => {
-            let goals = [], goal
-            if (!response || response.length === 0) {
-                console.error('Нет целей')
-                return null
-            } else {
+    self.findByUser = async (ctx, user_id) => {
+        const apiPath = self.get('apiPath')
+    
+        let result = { success: false }
+    
+        if (!apiPath || apiPath === '') {
+            result.error = errors.getByCode(1001) // Wrong or undefined apiPath
+        } else {
+            user_id = (user_id && user_id.id) || user_id || ctx.session.user.get('id')
+            await req.make(ctx, '/users/' + user_id + '/goals', {
+                method: 'GET'
+            }).then( async response => {
+                let goal
+
+                result.success = true
+                result.items = []
                 for (let i = 0; i < response.length; i++) {
                     goal = (new Goal()).set(response[i])
+                    let contract = await (new Contract()).findByGoalAndOwner(ctx, goal.get('id'), user_id)
                     goal.set({
                         createdAt_human: moment(goal.get('createdAt')),
                         updatedAt_human: moment(goal.get('updatedAt')),
                         deadlineAt_human: goal.get('deadlineAt') ? moment(goal.get('deadlineAt')) : null,
-                        contract: await (new Contract())
-                            .findByGoalAndOwner(ctx, goal.get('id'), user_id)
+                        contract: contract.get()
                     })
-                    goals.push(goal)
+                    result.items.push(goal)
                 }
-            }
-            return goals
-        }).catch( reason => {
-            console.error(reason)
-            return false
-        })
-        
-        return ret || null
+                return true
+            }).catch( reason => {
+                result.error = Object.assign(
+                    { object: reason },
+                    errors.getByCode(1103) // Exception caught in model Goal::findByUser()
+                )
+                console.error(result.error.message)
+                console.log(result.error.object)
+                return false
+            })
+        }
+    
+        return result
     }
     
     /**
@@ -115,7 +127,7 @@ function Goal (data) {
      */
     self.findById = async (ctx, id, user, opts) => {
         opts = opts || {}
-        const ret = await req.make(ctx, '/goals/' + id, {
+        const ret = await req.make(ctx, self.get('apiPath') + '/' + id, {
             method: 'GET'
         }).then( response => {
             self.set(response)
@@ -132,19 +144,25 @@ function Goal (data) {
                     contract: await (new Contract()).findByGoalAndOwner(ctx, self.get('id'), (user || ctx.session.user).get('id')),
                     contracts: await (new Contract()).findByGoal(ctx, self.get('id'))
                 })
+                let progress = 0
                 if (self.get('deadlineAt')) {
-                    const progress = moment().startOf('day').diff(self.get('createdAt')) / moment(self.get('deadlineAt')).startOf('day').diff(self.get('createdAt')) * 100
+                    progress = moment().startOf('day').diff(self.get('createdAt')) / moment(self.get('deadlineAt')).startOf('day').diff(self.get('createdAt')) * 100
                     self.set({
                         deadlineAt_human: moment(self.get('deadlineAt')),
                         percent_completed: progress
-                    })
-                    self.set({
-                        state: progress === 100 ? 'Done' : (progress < 100 ? 'Active' : 'Overdue')
                     })
                     if (progress > 100) {
                         self.set({overdue_days: moment().startOf('day').from(self.get('deadlineAt'), true)})
                     }
                 }
+                self.set({
+                    state: self.get('completed') === true
+                        ? 'Completed'
+                        : (self.get('archived') === true
+                                ? 'Archived'
+                                : (progress === 100 ? 'Done' : (progress < 100 ? 'Active' : 'Overdue'))
+                        )
+                })
             }
             return self
         } else {
@@ -191,42 +209,6 @@ function Goal (data) {
         })
     }
     
-    /**
-     * Сохраняет объект в БД. Апдейтит существующую запись или вставляет новую в зависимости от поля self.id
-     *
-     * @param ctx - Контекст приложения
-     * @returns {Promise.<Goal>}
-     */
-    self.save = async(ctx) => {
-        // Определяем данные для вставки или апдейта
-        const data = self.get()
-        data.owner = { id: ctx.session.user.get('id')}
-
-        if (self.get('id') !== null && typeof self.get('id') !== 'undefined') {
-            // Если был определен айдишник - это апдейт, используем метод PUT
-            await req.make(ctx, '/goals/' + self.get('id'), Object.assign({}, self.get(), {
-                method: 'PUT',
-            })).then( response => {
-                self.set(response)
-            }).catch( reason => {
-                console.error(reason)
-                return false
-            })
-        } else {
-            // Если не был определен айдишник - это вставка, используем метод POST
-            await req.make(ctx, '/goals', Object.assign({}, self.get(), {
-                method: 'POST',
-            })).then( response => {
-                self.set(response)
-            }).catch( reason => {
-                console.error(reason)
-                return false
-            })
-        }
-        
-        return self
-    }
-    
     // Устанавливаем атрибуты модели, встроенные и переданные
     self.set(Object.assign({
         apiPath: '/goals',
@@ -248,7 +230,7 @@ function Goal (data) {
 
 // Наследуемся от базовой модели
 Goal.prototype = Object.create(Base.prototype)
-Goal.prototype.constructor = Base
+Goal.prototype.constructor = Goal
 
 console.log('🔸️  Goal model initiated')
 

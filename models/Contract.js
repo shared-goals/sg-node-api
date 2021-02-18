@@ -1,7 +1,9 @@
 "use strict";
 
 const Base = require('./Base')
+const moment = require('moment')
 const req = require('../utils/req')
+const errors = require('../errors')
 
 /**
  * Класс контракта к цели
@@ -70,7 +72,7 @@ function Contract (data) {
      */
     self.validateFormat = (ctx, txt) => {
         let ret
-        // ret = await req.make(ctx, 'contracts/validate/' + encodeURIComponent(txt), {
+        // ret = await req.make(ctx, self.get('apiPath') + 'validate/' + encodeURIComponent(txt), {
         //     method: 'GET',
         // }).then( (response) => response.data)
 
@@ -164,7 +166,29 @@ function Contract (data) {
         const ret = await req.make(ctx, '/users/' + (user_id || ctx.session.user.get('id')) + '/contracts', {
             method: 'GET'
         }).then( response => {
-            return response.map((contract) => (new Contract()).set(contract))
+            return response.map((contract) => {
+                let c = (new Contract()).set(contract)
+                let progress = 0
+                if (c.get('deadlineAt')) {
+                    progress = moment().startOf('day').diff(c.get('createdAt')) / moment(c.get('deadlineAt')).startOf('day').diff(c.get('createdAt')) * 100
+                    c.set({
+                        deadlineAt_human: moment(c.get('deadlineAt')),
+                        percent_completed: progress
+                    })
+                    if (progress > 100) {
+                        c.set({overdue_days: moment().startOf('day').from(c.get('deadlineAt'), true)})
+                    }
+                }
+                c.set({
+                    state: c.get('completed') === true
+                        ? 'Completed'
+                        : (c.get('archived') === true
+                                ? 'Archived'
+                                : (progress === 100 ? 'Done' : (progress < 100 ? 'Active' : 'Overdue'))
+                        )
+                })
+                return c
+            })
         }).catch( reason => {
             console.error(reason)
             return false
@@ -199,10 +223,10 @@ function Contract (data) {
      * @param ctx - Контекст приложения
      * @param goal - Идентификатор заданной цели
      * @param owner - Идентификатор заданного пользователя
-     * @returns {Promise.<TResult>}
+     * @returns {Promise.<*>}
      */
     self.findByGoalAndOwner = async(ctx, goal, owner) => {
-        return await req.make(ctx, '/contracts/' + goal + '/' + owner, {
+        return await req.make(ctx, self.get('apiPath') + '/' + goal + '/' + owner, {
             method: 'GET',
         }).then( response => {
             if (!response.error) {
@@ -223,42 +247,6 @@ function Contract (data) {
      */
     self.updateReadyState = async(ctx) => {
         self.set({ready: (await self.validateFormat(ctx, self.get('occupation'))) !== null})
-    }
-    
-    /**
-     * Сохраняет объект в БД. Апдейтит существующую запись или вставляет новую в зависимости от поля self.id
-     *
-     * @param ctx - Контекст приложения
-     * @returns {Promise.<Goal>}
-     */
-    self.save = async(ctx) => {
-        // Определяем данные для вставки или апдейта
-        const data = self.get()
-        data.owner = { id: ctx.session.user.get('id')}
-        
-        if (self.get('id') !== null && typeof self.get('id') !== 'undefined') {
-            // Если был определен айдишник - это апдейт, используем метод PUT
-            await req.make(ctx, '/contracts/' + self.get('id'), Object.assign({}, self.get(), {
-                method: 'PUT',
-            })).then( response => {
-                self.set(response)
-            }).catch( reason => {
-                console.error(reason)
-                return false
-            })
-        } else {
-            // Если не был определен айдишник - это вставка, используем метод POST
-            await req.make(ctx, '/contracts', Object.assign({}, self.get(), {
-                method: 'POST',
-            })).then( response => {
-                self.set(response)
-            }).catch( reason => {
-                console.error(reason)
-                return false
-            })
-        }
-        
-        return self
     }
     
     // Устанавливаем атрибуты модели, встроенные и переданные
@@ -283,7 +271,7 @@ function Contract (data) {
 
 // Наследуемся от базовой модели
 Contract.prototype = Object.create(Base.prototype)
-Contract.prototype.constructor = Base
+Contract.prototype.constructor = Contract
 
 console.log('🔸️  Contract model initiated')
 

@@ -2,6 +2,7 @@
 
 const Base = require('./Base')
 const req = require('../utils/req')
+const errors = require('../errors')
 
 /**
  * Класс текущего пользователя
@@ -48,7 +49,7 @@ function User (data) {
             data.id = parseInt(data.id, 10)
         }
         self.get('auth').push(data)
-        const ret = await req.make(ctx, '/users/' + self.get('id'), {
+        const ret = await req.make(ctx, self.get('apiPath') + '/' + self.get('id'), {
             method: 'PUT',
             auth: self.get('auth')
         })
@@ -62,60 +63,25 @@ function User (data) {
     }
     
     /**
-     * Возвращает массив всех пользователей
-     *
-     * @param ctx - Контекст приложения
-     * @returns {Promise.<TResult>}
-     */
-    self.findAll = async (ctx) => {
-        return await req.make(ctx, '/users', {
-            method: 'GET'
-        }).then( async (response) => {
-            let users = []
-            if (!response || response.length === 0) {
-                console.error(ctx, 'Нет пользователей')
-                return null
-            } else {
-                for (let i = 0; i < response.length; i++) {
-                    users.push((new User()).set(response[i]))
-                }
-            }
-            return users
-        }).catch( reason => {
-            console.error(reason)
-            return null
-        })
-    }
-    
-    /**
      * Возвращает массив всех пользователей в соответствии с текстовым запросом
      *
      * @param ctx - Контекст приложения
      * @param query - Текстовый запрос
      * @param opts - Опции поиска
-     * @returns {Promise.<TResult>}
+     * @type {(function(*=, *=, *=))|*}
+     * @private
      */
-    self.search = async (ctx, query, opts) => {
+    self._search = self.search ; self.search = async (ctx, query, opts) => {
         opts = opts || {}
-        return await req.make(ctx, '/users/search/' + query, {
-            method: 'GET'
-        }).then( async (response) => {
-            let users = []
-            if (!response || response.length === 0) {
-                console.error(ctx, 'Нет пользователей')
-                return null
-            } else {
-                for (let i = 0; i < response.length; i++) {
-                    if (opts.skip_my !== true || response[i].id !== ctx.session.user.get('id')) {
-                        users.push((new User()).set(response[i]))
-                    }
-                }
-            }
-            return users
-        }).catch( reason => {
-            console.error(reason)
-            return null
-        })
+        // Вызываем дефолтный базовый метод .search()
+        let result = await self._search(ctx, query, opts || {})
+
+        // Если результат валидный и была опция исключить текущего пользователя - фильтруем по сессионному ключу
+        if (result.success === true && opts.skip_my === true) {
+            result.items = result.items.filter( item => item.get('id') !== ctx.session.user.get('id') )
+        }
+
+        return result
     }
     
     /**
@@ -126,7 +92,7 @@ function User (data) {
      * @returns {Promise.<User>}
      */
     self.findByEmail = async (ctx, email) => {
-        const ret = await req.make(ctx, '/users/email/' + encodeURIComponent(email), {
+        const ret = await req.make(ctx, self.get('apiPath') + '/email/' + encodeURIComponent(email), {
             method: 'GET'
         }).then( response => {
             self.set(response)
@@ -188,28 +154,6 @@ function User (data) {
     }
     
     /**
-     * Сохраняет объект в БД, апдейтя существующую запись
-     *
-     * @param ctx - Контекст приложения
-     * @returns {Promise.<Goal>}
-     */
-    self.save = async(ctx) => {
-        // Определяем данные для апдейта
-        const data = self.get()
-        
-        await req.make(ctx, '/users/' + self.get('id'), Object.assign({}, self.get(), {
-            method: 'PUT',
-        })).then( response => {
-            self.set(response)
-        }).catch( reason => {
-            console.error(reason)
-            return false
-        })
-        
-        return self
-    }
-    
-    /**
      * Обновляет объект юзера в сессии по данным из БД
      *
      * @returns {Promise.<*>}
@@ -239,7 +183,7 @@ function User (data) {
 
 // Наследуемся от базовой модели
 User.prototype = Object.create(Base.prototype)
-User.prototype.constructor = Base
+User.prototype.constructor = User
 
 console.log('🔸️  User model initiated')
 

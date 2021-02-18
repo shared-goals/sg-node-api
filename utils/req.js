@@ -58,7 +58,8 @@ const make = async (ctx, url, args = {}) => {
         console.error('🚫  SharedGoals API URL is not defined. Set SG_API env-variable to fix this.')
         return null
     }
-    return new Promise((resolve, reject) => {
+
+    return new Promise( async (resolve, reject) => {
         let user = SESSION_USER
         
         // Если определен контекст приложения - ищем там данные пользователя
@@ -92,7 +93,7 @@ const make = async (ctx, url, args = {}) => {
         if (process.env.LOG === 'on') {
             console.log(url + ' ' + JSON.stringify(opt))
         }
-
+        
         // Осуществляем запрос
         request(opt, (error, response, body) => {
             if (!error) {

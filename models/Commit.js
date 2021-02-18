@@ -3,6 +3,7 @@
 const Base = require('./Base')
 const req = require('../utils/req')
 const moment = require('moment')
+const errors = require('../errors')
 
 /**
  * Класс коммита к контракту
@@ -76,7 +77,7 @@ function Commit (data) {
             method: 'GET'
         }).then( response => {
             let commits = response.map((commit) => (new Commit()).set(commit))
-            commits = self.sortBy(commits, 'createdAt', false)
+            commits = self.sortItems(commits, 'createdAt', 'desc')
             return self.formatFields(commits)
         }).catch( reason => {
             console.error(reason)
@@ -98,7 +99,7 @@ function Commit (data) {
             method: 'GET',
         }).then( response => {
             let commits = response.map((commit) => (new Commit()).set(commit))
-            commits = self.sortBy(commits, 'createdAt', false)
+            commits = self.sortItems(commits, 'createdAt', 'desc')
             return self.formatFields(commits)
         }).catch( reason => {
             console.error(reason)
@@ -117,7 +118,7 @@ function Commit (data) {
     self.formatFields = (commits) => {
         return (commits || []).map((commit) => {
             commit.set({
-                createdAt_human: moment(commit.get('createdAt')).format('DD.MM'),
+                createdAt_human: moment(commit.get('createdAt')).fromNow(), // format('DD.MM.YYYY HH:mm'),
                 duration_human: commit.formatDuration('duration')
             })
             return commit
@@ -140,7 +141,7 @@ function Commit (data) {
      * @param ctx - Контекст приложения
      * @returns {Promise.<Goal>}
      */
-    self.save = async(ctx) => {
+    self.save2 = async(ctx) => {
         // Определяем данные для вставки или апдейта
         self.set({owner: { id: ctx.session.user.get('id')}})
 
@@ -153,7 +154,7 @@ function Commit (data) {
         
         if (self.get('id') !== null && typeof self.get('id') !== 'undefined') {
             // Если был определен айдишник - это апдейт, используем метод PUT
-            await req.make(ctx, '/commits/' + self.get('id'), Object.assign({}, data, {
+            await req.make(ctx, self.get('apiPath') + '/' + self.get('id'), Object.assign({}, data, {
                 method: 'PUT',
             })).then( response => {
                 self.set(response)
@@ -163,7 +164,7 @@ function Commit (data) {
             })
         } else {
             // Если не был определен айдишник - это вставка, используем метод POST
-            await req.make(ctx, '/commits', Object.assign({}, data, {
+            await req.make(ctx, self.get('apiPath'), Object.assign({}, data, {
                 method: 'POST',
             })).then( response => {
                 self.set(response)
@@ -193,7 +194,7 @@ function Commit (data) {
 
 // Наследуемся от базовой модели
 Commit.prototype = Object.create(Base.prototype)
-Commit.prototype.constructor = Base
+Commit.prototype.constructor = Commit
 
 console.log('🔸️  Commit model initiated')
 
