@@ -76,7 +76,7 @@ function Commit (data) {
         const ret = await req.make(ctx, '/users/' + user_id + '/commits', {
             method: 'GET'
         }).then( response => {
-            let commits = response.map((commit) => (new Commit()).set(commit))
+            let commits = response.map( commit => (new Commit()).set(commit))
             commits = self.sortItems(commits, 'createdAt', 'desc')
             return self.formatFields(commits)
         }).catch( reason => {
@@ -98,7 +98,7 @@ function Commit (data) {
         const ret = await req.make(ctx, '/goals/' + id + '/commits', {
             method: 'GET',
         }).then( response => {
-            let commits = response.map((commit) => (new Commit()).set(commit))
+            let commits = response.map( commit => (new Commit()).set(commit))
             commits = self.sortItems(commits, 'createdAt', 'desc')
             return self.formatFields(commits)
         }).catch( reason => {
@@ -116,7 +116,7 @@ function Commit (data) {
      * @returns {any[] | Array}
      */
     self.formatFields = (commits) => {
-        return (commits || []).map((commit) => {
+        return (commits || []).map( commit => {
             commit.set({
                 createdAt_human: moment(commit.get('createdAt')).fromNow(), // format('DD.MM.YYYY HH:mm'),
                 duration_human: commit.formatDuration('duration')
@@ -141,38 +141,23 @@ function Commit (data) {
      * @param ctx - Контекст приложения
      * @returns {Promise.<Goal>}
      */
-    self.save2 = async(ctx) => {
-        // Определяем данные для вставки или апдейта
-        self.set({owner: { id: ctx.session.user.get('id')}})
-
+    self._save = self.save ; self.save = async(ctx) => {
         // Фиксируем текущую дату срабатывания в контракте и вычисляем следующую дату по контракту, сэйвим в контракт
         // const contract = self.get('contract')
         // contract.save(ctx)
         
-        const data = self.plain()
-        data.contract = { id: data.contract.id }
         
-        if (self.get('id') !== null && typeof self.get('id') !== 'undefined') {
-            // Если был определен айдишник - это апдейт, используем метод PUT
-            await req.make(ctx, self.get('apiPath') + '/' + self.get('id'), Object.assign({}, data, {
-                method: 'PUT',
-            })).then( response => {
-                self.set(response)
-            }).catch( reason => {
-                console.error(reason)
-                return false
-            })
-        } else {
-            // Если не был определен айдишник - это вставка, используем метод POST
-            await req.make(ctx, self.get('apiPath'), Object.assign({}, data, {
-                method: 'POST',
-            })).then( response => {
-                self.set(response)
-            }).catch( reason => {
-                console.error(reason)
-                return false
-            })
-        }
+        // Сохраняем в переменную текущее поле контракта
+        const contractObject = self.get('contract')
+        
+        // Переопределяем поле контракта, чтобы была json-структура с полем id, а не объект модели Contract
+        self.set({ contract: self.plain().contract })
+        
+        // Вызываем дефолтный save()-метод, ничего не знающий о внутренних под-структурах
+        await self._save(ctx)
+        
+        // И возвращаем на место контракт как объект
+        self.set({ contract: contractObject })
         
         return self
     }

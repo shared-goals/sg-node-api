@@ -7,7 +7,12 @@ const errors = [
     { code: 1004, message: 'Exception caught in model Base::save()' },
     
     // Goal model
-    { code: 1103, message: 'Exception caught in model Goal::findByUser()' }
+    { code: 1102, message: 'Exception caught in model Goal::findById()' },
+    { code: 1103, message: 'Exception caught in model Goal::findByUser()' },
+    
+    // Contract model
+    { code: 1202, message: 'Exception caught in model Contract::findById()' },
+    { code: 1203, message: 'Exception caught in model Contract::findByUser()' }
 ]
 
 module.exports.getByCode = (code) => {

@@ -2,7 +2,6 @@
 
 const Base = require('./Base')
 const req = require('../utils/req')
-const moment = require('moment')
 const User = require('./User')
 const Contract = require('./Contract')
 const errors = require('../errors')
@@ -39,55 +38,6 @@ function Goal (data) {
     }
     
     /**
-     * Возвращает массив всех целей выбранного или текущего пользователя
-     *
-     * @param ctx - Контекст приложения
-     * @param user_id - Идентификатор пользователя
-     * @returns {Promise.<*>}
-     */
-    self.findByUser = async (ctx, user_id) => {
-        const apiPath = self.get('apiPath')
-    
-        let result = { success: false }
-    
-        if (!apiPath || apiPath === '') {
-            result.error = errors.getByCode(1001) // Wrong or undefined apiPath
-        } else {
-            user_id = (user_id && user_id.id) || user_id || ctx.session.user.get('id')
-            await req.make(ctx, '/users/' + user_id + '/goals', {
-                method: 'GET'
-            }).then( async response => {
-                let goal
-
-                result.success = true
-                result.items = []
-                for (let i = 0; i < response.length; i++) {
-                    goal = (new Goal()).set(response[i])
-                    let contract = await (new Contract()).findByGoalAndOwner(ctx, goal.get('id'), user_id)
-                    goal.set({
-                        createdAt_human: moment(goal.get('createdAt')),
-                        updatedAt_human: moment(goal.get('updatedAt')),
-                        deadlineAt_human: goal.get('deadlineAt') ? moment(goal.get('deadlineAt')) : null,
-                        contract: contract.get()
-                    })
-                    result.items.push(goal)
-                }
-                return true
-            }).catch( reason => {
-                result.error = Object.assign(
-                    { object: reason },
-                    errors.getByCode(1103) // Exception caught in model Goal::findByUser()
-                )
-                console.error(result.error.message)
-                console.log(result.error.object)
-                return false
-            })
-        }
-    
-        return result
-    }
-    
-    /**
      * Возвращает объект цели по ее идентификатору / пользователю и коду
      *
      * @param ctx - Контекст приложения
@@ -121,53 +71,67 @@ function Goal (data) {
      *
      * @param ctx - Контекст приложения
      * @param id - Идентификатор цели
-     * @param user - Объект пользователя для определения поля текущего или указанного пользователя
-     * @param opts - Другие опции
      * @returns {Promise.<*>}
      */
-    self.findById = async (ctx, id, user, opts) => {
-        opts = opts || {}
-        const ret = await req.make(ctx, self.get('apiPath') + '/' + id, {
+    self.findById = async (ctx, id) => {
+        let result = { success: false }
+        
+        const response = await req.make(ctx, self.get('apiPath') + '/' + id, {
             method: 'GET'
         }).then( response => {
             self.set(response)
+            result.success = true
             return true
         }).catch( reason => {
-            console.error(reason)
+            result.error = Object.assign(
+                { object: reason },
+                errors.getByCode(1102) // Exception caught in model Goal::findById()
+            )
+            console.error(result.error.message)
+            console.log(result.error.object)
             return false
         })
-        if (ret !== false) {
-            if (opts.simple !== true) {
-                self.set({
-                    createdAt_human: moment(self.get('createdAt')),
-                    updatedAt_human: moment(self.get('updatedAt')),
-                    contract: await (new Contract()).findByGoalAndOwner(ctx, self.get('id'), (user || ctx.session.user).get('id')),
-                    contracts: await (new Contract()).findByGoal(ctx, self.get('id'))
-                })
-                let progress = 0
-                if (self.get('deadlineAt')) {
-                    progress = moment().startOf('day').diff(self.get('createdAt')) / moment(self.get('deadlineAt')).startOf('day').diff(self.get('createdAt')) * 100
-                    self.set({
-                        deadlineAt_human: moment(self.get('deadlineAt')),
-                        percent_completed: progress
-                    })
-                    if (progress > 100) {
-                        self.set({overdue_days: moment().startOf('day').from(self.get('deadlineAt'), true)})
-                    }
-                }
-                self.set({
-                    state: self.get('completed') === true
-                        ? 'Completed'
-                        : (self.get('archived') === true
-                                ? 'Archived'
-                                : (progress === 100 ? 'Done' : (progress < 100 ? 'Active' : 'Overdue'))
-                        )
-                })
-            }
-            return self
-        } else {
-            return null
+        if (response === true) {
+            result = self
         }
+
+        return result
+    }
+    
+    /**
+     * Возвращает массив всех целей выбранного или текущего пользователя
+     *
+     * @param ctx - Контекст приложения
+     * @param user_id - Идентификатор пользователя
+     * @returns {Promise.<*>}
+     */
+    self.findByUser = async (ctx, user_id) => {
+        const apiPath = self.get('apiPath')
+        
+        let result = { success: false }
+        
+        if (!apiPath || apiPath === '') {
+            result.error = errors.getByCode(1001) // Wrong or undefined apiPath
+        } else {
+            user_id = (user_id && user_id.id) || user_id || ctx.session.user.get('id')
+            await req.make(ctx, '/users/' + user_id + '/goals', {
+                method: 'GET'
+            }).then( async response => {
+                result.success = true
+                result.items = response.items
+                return true
+            }).catch( reason => {
+                result.error = Object.assign(
+                    { object: reason },
+                    errors.getByCode(1103) // Exception caught in model Goal::findByUser()
+                )
+                console.error(result.error.message)
+                console.log(result.error.object)
+                return false
+            })
+        }
+        
+        return result
     }
     
     /**

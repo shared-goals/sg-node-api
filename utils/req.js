@@ -98,11 +98,18 @@ const make = async (ctx, url, args = {}) => {
         request(opt, (error, response, body) => {
             if (!error) {
                 let responseJSON = null
-                try {
-                    responseJSON = JSON.parse(body)
-                } catch (err) {
-                    console.error('body: ', body)
-                    console.error(ctx, err)
+                if (body.match(/Authentication Error/)) {
+                    reject({success: false, error: {message: body}})
+                } else if (body.match(/Internal Server Error/)) {
+                    reject({success: false, error: {message: body}})
+                } else {
+                    try {
+                        responseJSON = JSON.parse(body)
+                    } catch (err) {
+                        console.log('body: ', body)
+                        // console.error('context:', ctx)
+                        console.error('error:', err)
+                    }
                 }
                 if (responseJSON !== null) {
                     if (!responseJSON.hasOwnProperty('error')) {
@@ -110,6 +117,8 @@ const make = async (ctx, url, args = {}) => {
                     } else {
                         reject(responseJSON)
                     }
+                } else {
+                    reject({success: false, error: {message: body}})
                 }
             } else {
                 reject(error)

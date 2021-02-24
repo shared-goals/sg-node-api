@@ -29,7 +29,9 @@ function User (data) {
         return await req.make(ctx, '/check', {
             token: token,
             method: 'POST'
-        }).then(response => response)
+        }).then(response => {
+            return response
+        })
         .catch(reason => {
             console.error(reason)
             return reason
@@ -144,8 +146,8 @@ function User (data) {
             return response
         })
         if (auth.token) {
-            console.log('Сессия обновлена, инфо:')
-            console.log(ctx.session.passport.user)
+            console.log('Сессия обновлена')
+            // console.log('Инфо: ', ctx.session.passport.user)
             ctx.session.passport.user = ctx.session.user.set({token: auth.token}).get()
             return { success: true }
         } else {

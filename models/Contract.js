@@ -59,7 +59,9 @@ function Contract (data) {
 
     
     /**
+     * TODO Понять нужен ли в модели этот метод или нужно оставить только в бэкендовой модели
      * Проверяет валидность введенной строки занятости:
+     *
      * XXm|h every (day|mon|tue|...|week|month|XX,XX)
      * Примеры:
      *   10m every day
@@ -91,6 +93,7 @@ function Contract (data) {
     }
     
     /**
+     * TODO Понять нужен ли в модели этот метод или нужно оставить только в бэкендовой модели
      * Парсит исходный формат занятости и возвращает форматированный для хранения в БД
      *
      * @param data введенный формат занятости. Пример: {duration_value: 20, duration_measures: 'min', repeats: 'mon,sat}
@@ -160,41 +163,35 @@ function Contract (data) {
      *
      * @param ctx - Контекст приложения
      * @param user_id - ID указанного пользователя
-     * @returns {Promise.<TResult|null>}
+     * @returns {Promise.<*>}
      */
     self.findByUser = async (ctx, user_id) => {
-        const ret = await req.make(ctx, '/users/' + (user_id || ctx.session.user.get('id')) + '/contracts', {
-            method: 'GET'
-        }).then( response => {
-            return response.map((contract) => {
-                let c = (new Contract()).set(contract)
-                let progress = 0
-                if (c.get('deadlineAt')) {
-                    progress = moment().startOf('day').diff(c.get('createdAt')) / moment(c.get('deadlineAt')).startOf('day').diff(c.get('createdAt')) * 100
-                    c.set({
-                        deadlineAt_human: moment(c.get('deadlineAt')),
-                        percent_completed: progress
-                    })
-                    if (progress > 100) {
-                        c.set({overdue_days: moment().startOf('day').from(c.get('deadlineAt'), true)})
-                    }
-                }
-                c.set({
-                    state: c.get('completed') === true
-                        ? 'Completed'
-                        : (c.get('archived') === true
-                                ? 'Archived'
-                                : (progress === 100 ? 'Done' : (progress < 100 ? 'Active' : 'Overdue'))
-                        )
-                })
-                return c
+        const apiPath = self.get('apiPath')
+
+        let result = { success: false }
+
+        if (!apiPath || apiPath === '') {
+            result.error = errors.getByCode(1001) // Wrong or undefined apiPath
+        } else {
+            user_id = (user_id && user_id.id) || user_id || ctx.session.user.get('id')
+            await req.make(ctx, '/users/' + user_id + '/contracts', {
+                method: 'GET'
+            }).then( async response => {
+                result.success = true
+                result.items = response.items
+                return true
+            }).catch( reason => {
+                result.error = Object.assign(
+                    { object: reason },
+                    errors.getByCode(1203) // Exception caught in model Goal::findByUser()
+                )
+                console.error(result.error.message)
+                console.log(result.error.object)
+                return false
             })
-        }).catch( reason => {
-            console.error(reason)
-            return false
-        })
-    
-        return ret || null
+        }
+
+        return result
     }
     
     /**
