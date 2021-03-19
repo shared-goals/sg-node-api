@@ -174,7 +174,7 @@ function Contract (data) {
             result.error = errors.getByCode(1001) // Wrong or undefined apiPath
         } else {
             user_id = (user_id && user_id.id) || user_id || ctx.session.user.get('id')
-            await req.make(ctx, '/users/' + user_id + '/contracts', {
+            await req.make(ctx, '/users/' + user_id + '/contracts/', {
                 method: 'GET'
             }).then( async response => {
                 result.success = true
@@ -202,7 +202,7 @@ function Contract (data) {
      * @returns {Promise.<TResult|null>}
      */
     self.findByGoal = async (ctx, id) => {
-        const ret = await req.make(ctx, '/goals/' + id + '/contracts', {
+        const ret = await req.make(ctx, '/goals/' + id + '/contracts/', {
             method: 'GET',
         }).then( response => {
             return response.map((contract) => (new Contract()).set(contract))
